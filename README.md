@@ -1,73 +1,94 @@
 # ya360-mcp
 
-[![Проверки](https://github.com/cyxar4uk/ya360-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/cyxar4uk/ya360-mcp/actions/workflows/ci.yml)
-[![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/cyxar4uk/ya360-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/cyxar4uk/ya360-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node.js 20+](https://img.shields.io/badge/node-%E2%89%A520-green.svg)
 
-[English](README.en.md) · **Русский**
+**English** · [Русский](README.ru.md)
 
-Неофициальный MCP-сервер: Claude работает с **Яндекс Трекером**, **Почтой** и **Календарём** от вашего имени.
-Проект не связан с ООО «Яндекс» и не одобрен им.
+An unofficial MCP server and Claude plugin that lets Claude work with **Yandex Tracker**, **Yandex Mail** and
+**Yandex Calendar** (Yandex 360) on your behalf. Not affiliated with or endorsed by Yandex LLC.
 
-*Unofficial MCP server that lets Claude work with Yandex Tracker, Mail and Calendar (Yandex 360) — [English README](README.en.md).*
+**Documentation — [wiki](https://github.com/cyxar4uk/ya360-mcp/wiki)** (in Russian): installation, sign-in, workflows with examples, FAQ.
 
-**Документация — [вики](https://github.com/cyxar4uk/ya360-mcp/wiki):** установка, подключение, сценарии с примерами, частые вопросы.
+- **One-click sign-in** — "Sign in with Yandex" in the browser; no app passwords, no OAuth app of your own.
+- **Runs on your computer** — data goes directly between you and Yandex, there are no intermediary servers;
+  tokens are kept in Claude's or your OS's secure storage ([details](SECURITY.md)).
+- **Read-only by default** — writing, sending and deleting are enabled per permission group,
+  and every change is made only after you confirm it.
 
-- **Подключение в один клик** — «Войти через Яндекс» в браузере, без паролей приложений и своих OAuth-приложений.
-- **Всё у вас на компьютере** — данные идут напрямую между вами и Яндексом, промежуточных серверов нет;
-  токены — в защищённом хранилище Claude или вашей ОС ([подробнее](SECURITY.md)).
-- **По умолчанию только чтение** — запись, отправка и удаление включаются по группам.
+## What it does
 
-## Что умеет
-
-| Раздел | Чтение | Запись (если разрешена) |
+| Area | Read | Write (if allowed) |
 |---|---|---|
-| Трекер: задачи | поиск, карточка с комментариями, связями и вложениями, переходы статуса, очереди, поиск людей, активность за период | комментарии, создание (с защитой от дублей) и правка задач, смена статуса, чеклист |
-| Трекер: связи, вложения | связи задачи, список и скачивание вложений | связать, убрать связь, приложить и удалить файл |
-| Трекер: учёт времени | списания по задаче и за период | списать, исправить, удалить |
-| Трекер: спринты | доски, спринты, задачи спринта со сводкой по статусам и исполнителям | поставить задачу в спринт |
-| Почта | папки, поиск (и по-русски, и по точному адресу), чтение без отметки «прочитано», текст вложений с поиском фрагментов | черновик, отправка, отметки, перенос по папкам |
-| Календарь | календари, события с раскрытием повторяющихся и ссылкой на видеовстречу | создать, изменить, удалить событие |
+| Tracker: issues | search, issue card with comments, links and attachments, status transitions, queues, people lookup, activity over a period | comments, create (with duplicate protection) and edit issues, change status, checklist |
+| Tracker: links, attachments | issue links, list and download attachments | link, unlink, attach and delete files |
+| Tracker: time tracking | worklogs per issue and per period | log, edit, delete time |
+| Tracker: sprints | boards, sprints, sprint issues with a summary by status and assignee | move an issue to a sprint |
+| Mail | folders, search (Cyrillic and exact sender address), read without marking as read, text of attachments with fragment search | draft, send, flags, move between folders |
+| Calendar | calendars, events with recurrence expansion and video-meeting link | create, edit, delete events |
 
-Плагин для Claude Code добавляет готовые сценарии — Claude сам предлагает их по смыслу просьбы или по команде:
+45 tools in total — see the [tool reference](https://github.com/cyxar4uk/ya360-mcp/wiki/Инструменты).
 
-| Сценарий | Что делает |
+### Workflows
+
+The Claude Code plugin adds ready-made workflows (skills); Claude offers them when your request matches, or you can call them by command:
+
+| Workflow | What it does |
 |---|---|
-| `/ya360:meeting-followup` | итоги встречи в Телемосте: из конспекта — задачи в Трекер с исполнителями и сроками (по расшифровке), решения, письмо-резюме по просьбе |
-| `/ya360:meeting-prep` | справка перед встречей: что обещали в прошлый раз, открытые вопросы из почты и Трекера, что обсудить |
-| `/ya360:standup` | что сделано в предыдущий рабочий день, что сегодня, что мешает |
-| `/ya360:weekly-report` | отчёт за неделю: сделанное по результатам, планы, риски; версия для руководителя |
-| `/ya360:mail-to-task` | задача в Трекере по письму — суть, срок, вложения, без дублей |
-| `/ya360:stale-tasks` | просроченное и зависшее по людям, вежливые напоминания комментарием по подтверждению |
-| `/ya360:sprint-planning` | предложение на следующий спринт: перенос, загрузка по скорости людей, кандидаты из бэклога |
-| `/ya360:sprint-review` · `/ya360:inbox-digest` · `/ya360:day-plan` | сводка спринта · разбор почты · план дня |
-| `/ya360:setup-help` | помощь с подключением |
+| `/ya360:meeting-followup` | after a Yandex Telemost meeting: turns the meeting summary into Tracker issues with assignees and due dates (found in the transcript, with evidence timestamps), lists decisions, drafts a recap email on request |
+| `/ya360:meeting-prep` | a brief before a meeting: what was promised last time and what's done, open questions from mail and Tracker, what to discuss |
+| `/ya360:standup` | what you did on the previous working day, what's next today, what's blocking you |
+| `/ya360:weekly-report` | weekly report: results grouped by outcome, plans, risks; a version for your manager |
+| `/ya360:mail-to-task` | a Tracker issue from an email — summary, due date, attachments, no duplicates |
+| `/ya360:stale-tasks` | overdue and stalled issues by person, with polite reminder comments after confirmation |
+| `/ya360:sprint-planning` | a proposal for the next sprint: carry-over, load by each person's velocity, backlog candidates |
+| `/ya360:sprint-review` · `/ya360:inbox-digest` · `/ya360:day-plan` | sprint summary · inbox digest · daily plan |
+| `/ya360:setup-help` | help with connecting Yandex |
 
-Всё, что что-то меняет, сценарии делают только после вашего подтверждения; повторный разбор той же встречи или письма
-не создаёт дублей задач. Как они устроены — [docs/skills-design.md](docs/skills-design.md).
+Anything that changes data is done only after your confirmation; re-processing the same meeting or email does not create
+duplicate issues. Design notes — [docs/skills-design.md](docs/skills-design.md) (in Russian).
 
-Вызывать командой не обязательно — достаточно попросить словами («что по спринту?», «разбери итоги вчерашней встречи»).
-**Короткие команды без префикса** (`/standup` вместо `/ya360:standup`): у плагинов Claude Code префикс обязателен, поэтому
-сценарии можно поставить как личные навыки — `ya360-mcp skills install` (и тогда сервер подключить без плагина:
-`ya360-mcp register`). **В Claude Desktop** те же сценарии — в меню «+» → ya360: «Стендап», «Итоги встречи», «План дня»…
+You don't have to use commands — just ask in plain words ("how is the sprint going?", "process yesterday's meeting").
+Workflow instructions are written in Russian; Claude replies in the language you use.
 
-## Установка
+**Commands without the prefix** (`/standup` instead of `/ya360:standup`): Claude Code always prefixes plugin skills, so the
+workflows can also be installed as personal skills with `ya360-mcp skills install` (then connect the server without the
+plugin: `ya360-mcp register`). **In Claude Desktop** the same workflows are in the "+" menu → ya360 (Russian titles:
+«Стендап», «Итоги встречи», «План дня»…).
 
-### Claude Code — плагин
+## Example prompts
 
-Нужен Node.js 20 или новее.
+- "What did I do yesterday and what's on today?" — a standup from Tracker and Calendar.
+- "Process yesterday's meeting summary and create the tasks" — issues with assignees and due dates from a Telemost
+  meeting summary, created after you confirm the list.
+- "Find the email from accounting about the contract and make a Tracker issue from it."
+- "How is the current sprint going? Who is overloaded?"
+- "Draft a reply to the last email from Anna — don't send it."
+
+More examples — [wiki: Примеры запросов](https://github.com/cyxar4uk/ya360-mcp/wiki/Примеры-запросов) (in Russian).
+
+## Installation
+
+**Where it works.** The server runs on your computer, so the plugin works in Claude Code and in Cowork sessions that
+run on your computer; claude.ai chat in the browser and the mobile apps don't start local servers. Node.js 20 or newer
+must be on your PATH.
+
+### Claude Code — plugin
+
+Requires Node.js 20 or newer.
 
 ```
 /plugin marketplace add cyxar4uk/ya360-mcp
 /plugin install ya360@ya360-mcp
 ```
 
-### Claude Desktop — расширение
+### Claude Desktop — extension
 
-Скачайте `ya360-<версия>.mcpb` со [страницы выпусков](https://github.com/cyxar4uk/ya360-mcp/releases) и откройте его
-(или Настройки → Расширения → Установить). Node.js ставить не нужно — используется встроенный в Claude Desktop.
+Download `ya360-<version>.mcpb` from the [releases page](https://github.com/cyxar4uk/ya360-mcp/releases) and open it
+(or Settings → Extensions → Install). No Node.js needed — Claude Desktop's built-in runtime is used.
 
-### Вручную — любой клиент MCP
+### Manual — any MCP client
 
 ```bash
 git clone https://github.com/cyxar4uk/ya360-mcp && cd ya360-mcp
@@ -75,116 +96,147 @@ npm install
 node src/main.mjs setup
 ```
 
-Мастер подключит сервер к Claude Code и, по желанию, к Claude Desktop. На Windows запускайте его в PowerShell
-или Windows Terminal (в Git Bash не скрыть ввод паролей, если выберете их).
+The setup wizard connects the server to Claude Code and, optionally, to Claude Desktop. For other MCP clients the server
+command is `node <folder>/src/main.mjs` (or the bundled `dist/ya360-mcp.mjs`) over stdio.
+On Windows run the wizard in PowerShell or Windows Terminal (Git Bash can't hide password input, if you choose passwords).
 
-## Подключение аккаунта
+## Connecting your account
 
-**Проще всего — попросить Claude:** «подключи мой Яндекс». Откроется страница Яндекса — проверьте аккаунт и нажмите
-«Разрешить». Всё: инструменты появятся сразу. Для Трекера Claude спросит ID организации:
-Яндекс 360 — admin.yandex.ru → Профиль организации; Yandex Cloud — console.yandex.cloud → Organization.
+**The easiest way is to ask Claude:** "connect my Yandex" (or «подключи мой Яндекс»). A Yandex page opens — check the
+account and click "Allow". That's it: the tools appear right away. For Tracker, Claude asks for your organization ID:
+Yandex 360 — admin.yandex.ru → Organization profile; Yandex Cloud — console.yandex.cloud → Organization.
 
-**Или в терминале:** `ya360-mcp setup` (мастер: вход, проверка, права) или `ya360-mcp login`.
-Если на этой машине нет браузера (SSH) — `ya360-mcp login --manual`: откройте ссылку где угодно и вставьте код.
+**Or in a terminal:** `ya360-mcp setup` (wizard: sign-in, check, permissions) or `ya360-mcp login`.
+No browser on this machine (SSH)? `ya360-mcp login --manual`: open the link anywhere and paste the code.
 
-Как это устроено: вход по коду авторизации с PKCE через общее приложение проекта «ya360-mcp» на oauth.yandex.ru.
-Секрета приложения в коде нет и он не нужен; токен получаете и храните только вы. Приложение запрашивает только права
-выбранных сервисов (`tracker:read/write`, `mail:imap_full`, `mail:smtp`, `calendar:all`); адрес почты берётся из логина,
-вводить его не нужно. Отозвать доступ — id.yandex.ru → Безопасность → Доступ к данным.
-Токен действует год: без секрета приложения Яндекс его не продлевает, поэтому раз в год нужно войти заново —
-за две недели до срока напомнят `ya360-mcp doctor` и `yandex_status`.
+How it works: authorization-code sign-in with PKCE through the project's shared "ya360-mcp" app on oauth.yandex.ru.
+There is no client secret in the code and none is needed; only you receive and store the token. The app requests only the
+scopes of the services you choose (`tracker:read/write`, `mail:imap_full`, `mail:smtp`, `calendar:all`); your email
+address is taken from your Yandex login. Revoke access at id.yandex.ru → Security → Data access.
+The token is valid for one year: Yandex doesn't refresh it without a client secret, so once a year you sign in again —
+`ya360-mcp doctor` and `yandex_status` remind you two weeks before it expires.
 
-### Другие способы
+### Other options
 
-- **Пароли приложений** (Почта и Календарь) — если в организации запрещены сторонние приложения:
-  [id.yandex.ru/security](https://id.yandex.ru/security) → «Пароли приложений»: тип «Почта» и отдельно «Календарь».
-  В Почте: Все настройки → Почтовые программы → включить IMAP и «Пароли приложений и OAuth-токены».
-  Вписать в поля плагина/расширения или выбрать в мастере.
-- **Своё OAuth-приложение** — если организация разрешает только свои: зарегистрируйте приложение на oauth.yandex.ru
-  с нужными правами, в мастере выберите «своё OAuth-приложение».
-- **Токен Трекера** вручную — поле плагина или переменная `YANDEX_TRACKER_TOKEN`.
+- **App passwords** (Mail and Calendar) — if your organization blocks third-party apps:
+  [id.yandex.ru/security](https://id.yandex.ru/security) → "App passwords": type "Mail" and, separately, "Calendar".
+  In Mail: All settings → Email clients → enable IMAP and "App passwords and OAuth tokens".
+  Enter them in the plugin/extension fields or choose them in the wizard.
+- **Your own OAuth app** — if your organization allows only its own apps: register an app on oauth.yandex.ru with the
+  needed scopes and choose "own OAuth app" in the wizard.
+- **Tracker token** manually — the plugin field or the `YANDEX_TRACKER_TOKEN` variable.
 
-## Права
+## Permissions
 
-| Заготовка | Что разрешено |
+| Preset | Allowed |
 |---|---|
-| `read` (по умолчанию) | только чтение |
-| `assist` | чтение + комментарии в Трекере, черновики и раскладка почты — ничего не отправляет и не удаляет |
-| `full` | всё, включая отправку писем и удаление |
+| `read` (default) | read only |
+| `assist` | read + Tracker comments, mail drafts and organizing mail — never sends or deletes anything |
+| `full` | everything, including sending email and deleting |
 
-Можно собрать своё из групп: `tracker.read`, `tracker.comment`, `tracker.edit`, `tracker.files`, `tracker.worklog`,
-`mail.read`, `mail.draft`, `mail.organize` (раскладка по папкам), `mail.delete` (перенос в «Удалённые» и «Спам»), `mail.send`,
-`calendar.read`, `calendar.write`. Аварийный выключатель: переменная `YANDEX_MCP_READONLY=1` оставляет только чтение,
-что бы ни было в настройках. Примеры: `read,tracker.comment`,
-`full,-mail.send`, `read,tracker.*`. Изменить — поле «Права» плагина/расширения или `node src/main.mjs permissions assist`.
-Выключенные инструменты не видны Claude вовсе; какие скрыты — покажет инструмент `yandex_status`.
+You can combine groups: `tracker.read`, `tracker.comment`, `tracker.edit`, `tracker.files`, `tracker.worklog`,
+`mail.read`, `mail.draft`, `mail.organize` (moving between folders), `mail.delete` (moving to Trash and Spam), `mail.send`,
+`calendar.read`, `calendar.write`. Kill switch: the `YANDEX_MCP_READONLY=1` environment variable leaves read-only access
+regardless of settings. Examples: `read,tracker.comment`, `full,-mail.send`, `read,tracker.*`. Change them in the
+"Permissions" field of the plugin/extension or with `ya360-mcp permissions assist`.
+Disabled tools are not visible to Claude at all; `yandex_status` shows which ones are hidden.
 
-## Настройки
+## Configuration
 
-Откуда сервер берёт значения, по старшинству:
-1. переменные окружения — так передают настройки плагин и расширение (справочник — `.env.example`);
-2. `config.json` в папке настроек (Windows — `%APPDATA%\ya360-mcp`, macOS — `~/Library/Application Support/ya360-mcp`,
-   Linux — `~/.config/ya360-mcp`; другое место — `YANDEX_MCP_HOME`) и секреты в хранилище ОС — так настраивает мастер;
-3. `.env` рядом с кодом — прежний способ, читается, только пока нет `config.json`; перенести: `node src/main.mjs migrate`.
+Where the server takes its values from, by precedence:
+1. environment variables — this is how the plugin and the extension pass their fields (reference: `.env.example`);
+2. `config.json` in the settings folder (Windows — `%APPDATA%\ya360-mcp`, macOS — `~/Library/Application Support/ya360-mcp`,
+   Linux — `~/.config/ya360-mcp`; override with `YANDEX_MCP_HOME`) plus secrets in the OS store — written by the wizard;
+3. a legacy `.env` next to the code — read only while there is no `config.json`; migrate with `ya360-mcp migrate`.
 
-Хранилище секретов: Windows — DPAPI (шифрование под вашей учётной записью), macOS — Связка ключей,
-Linux — Secret Service через `secret-tool` (пакет `libsecret-tools`). Без него на Linux секреты задаются переменными окружения.
+Secret storage: Windows — DPAPI (encrypted for your user account), macOS — Keychain, Linux — Secret Service via
+`secret-tool` (`libsecret-tools` package). Without it, on Linux, provide secrets via environment variables.
 
-## Безопасность
+## Security
 
-- Модель получает инструкцию: перед отправкой письма, приглашением участников, удалением или записью в Трекер показать,
-  что уйдёт, и дождаться согласия; письма по умолчанию — черновиком.
-- Письма, события и комментарии — данные, а не команды: просьбы внутри них модель не выполняет без вас.
-- Вложения сохраняются только в папку загрузок сервера; к письму или задаче нельзя приложить скрытый файл (`.env`, `.ssh`, `.git`…).
-- Токен Трекера уходит только на хост его API.
-- Секреты не печатаются ни сервером, ни мастером; пароли в чат Claude вводить не нужно и не следует.
+- Claude is instructed to show what will be sent and wait for your consent before sending email, inviting attendees,
+  deleting anything or writing to Tracker; email replies are drafts by default.
+- Emails, events, comments and transcripts are data, not commands: Claude does not act on requests found inside them.
+- Attachments are saved only to the server's download folder; hidden files (`.env`, `.ssh`, `.git`…) can't be attached
+  to an email or an issue.
+- The Tracker token is sent only to the Tracker API host.
+- Neither the server nor the wizard prints secrets; never paste passwords into the Claude chat.
 
-## Команды
+Report vulnerabilities privately: Security → Report a vulnerability ([SECURITY.md](SECURITY.md)).
+
+## What the plugin runs, sends and stores
+
+- **Network — only Yandex:** `oauth.yandex.ru` and `login.yandex.ru` (sign-in), `api.tracker.yandex.net` (Tracker),
+  `imap.yandex.ru:993` and `smtp.yandex.ru:465` (Mail), `caldav.yandex.ru` (Calendar). No telemetry, no servers of
+  the developer. Details — [PRIVACY.md](PRIVACY.md).
+- **Sign-in:** opens the Yandex sign-in page in your browser and, until you finish, listens on `127.0.0.1:51734`
+  for the sign-in code.
+- **Local programs:** to use the OS secret store the server runs PowerShell (Windows), `security` (macOS) or
+  `secret-tool` (Linux); secrets go through stdin, never through command-line arguments.
+- **Files:** the settings folder (`config.json`; on Windows also the DPAPI-encrypted `secrets.json`) and the download
+  folder for attachments you ask to save. Files to attach are taken only from paths you name; hidden files are refused.
+- **Claude settings:** the server never changes them. Only two terminal commands that you run yourself do:
+  `ya360-mcp register` (adds the server with `claude mcp add` and/or to Claude Desktop's `claude_desktop_config.json`)
+  and `ya360-mcp skills install` (copies the workflows to `~/.claude/skills`).
+- **The code that runs:** the plugin starts `node dist/ya360-mcp.mjs` — a single-file esbuild bundle of `src/` and the
+  npm packages pinned in `package-lock.json`. CI rebuilds it on every push and fails if it differs from the committed
+  file (`npm run check:dist`); third-party licenses are in `dist/THIRD_PARTY_LICENSES.txt`. When Claude Code installs
+  the plugin it also runs `npm ci --ignore-scripts` for `package-lock.json`; the bundle doesn't need those packages.
+
+## Commands
 
 ```
-ya360-mcp                  запустить сервер (так его запускают клиенты MCP)
-ya360-mcp setup            мастер настройки
-ya360-mcp doctor           проверить подключение
-ya360-mcp login | logout   войти через Яндекс / удалить сохранённые пароли и токены
-ya360-mcp permissions [..] показать или изменить права
-ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
-ya360-mcp migrate [.env]   перенести настройки из прежнего .env
-ya360-mcp skills install   сценарии как личные навыки Claude Code — /standup без префикса
+ya360-mcp                          start the server (this is how MCP clients run it)
+ya360-mcp setup                    setup wizard
+ya360-mcp doctor                   check connections
+ya360-mcp login | logout           sign in with Yandex / remove stored passwords and tokens
+ya360-mcp permissions [..]         show or change permissions
+ya360-mcp register [code|desktop]  connect to Claude Code / Claude Desktop
+ya360-mcp skills install           workflows as personal Claude Code skills — /standup without the prefix
+ya360-mcp migrate [.env]           migrate settings from a legacy .env
 ```
 
-Из папки проекта — `node src/main.mjs <команда>`; из плагина — `node <папка плагина>/dist/ya360-mcp.mjs <команда>`.
+From the project folder — `node src/main.mjs <command>`; from the plugin — `node <plugin folder>/dist/ya360-mcp.mjs <command>`.
 
-## Ограничения
+## Limitations
 
-- Поиск почты — средствами IMAP (подстрока в отправителе, теме, тексте), не поиском веб-интерфейса.
-- Изменение и удаление повторяющегося события действуют на всю серию; новые события пишутся в UTC, ссылку на Телемост сервер не создаёт.
-- Учёт времени считает день за 8 часов, неделю за 5 дней; списания за период ищутся по дате внесения записи.
-- Хранилища секретов macOS и Linux в коде есть, но проверены пока только на Windows.
-- На Windows хранилище работает через PowerShell. Если политика компании включает для PowerShell ограниченный режим
-  (Constrained Language Mode), сохранённые пароли недоступны — задайте их полями плагина/расширения или переменными окружения.
+- Mail search uses IMAP (substring in sender, subject, body), not the web interface search.
+- Editing and deleting a recurring event affects the whole series; new events are written in UTC; the server does not
+  create Telemost links.
+- Time tracking counts a day as 8 hours and a week as 5 days; worklogs for a period are matched by entry date.
+- The macOS and Linux secret stores are implemented but so far tested only on Windows.
+- On Windows the secret store uses PowerShell. If company policy enables PowerShell Constrained Language Mode, stored
+  passwords are unavailable — use the plugin/extension fields or environment variables instead.
 
-## Разработка
+## Development
 
 ```bash
-npm test            # проверки без сети
-npm run smoke       # поднять сервер как клиент MCP; SMOKE_ENTRY=dist/ya360-mcp.mjs — проверить сборку
-npm run build       # dist/ya360-mcp.mjs + лицензии зависимостей (коммитится: его запускает плагин)
-npm run check:dist  # dist совпадает с исходниками
-npm run pack:mcpb   # release/ya360-<версия>.mcpb для Claude Desktop
-npm run wiki:tools  # страница вики «Инструменты» из сервера
-npm run wiki:sync   # выложить docs/wiki в вики GitHub
+npm test            # offline tests
+npm run smoke       # run the server as an MCP client; SMOKE_ENTRY=dist/ya360-mcp.mjs checks the bundle
+npm run build       # dist/ya360-mcp.mjs + third-party licenses (committed: the plugin runs it)
+npm run check:dist  # dist matches the sources
+npm run pack:mcpb   # release/ya360-<version>.mcpb for Claude Desktop
+npm run wiki:tools  # regenerate the wiki tool reference from the server
+npm run wiki:sync   # publish docs/wiki to the GitHub wiki
 ```
 
 ```
-src/main.mjs         вход: без аргументов — сервер, с командой — консольная утилита (src/cli.mjs)
-src/index.mjs        сервер MCP: подключает настроенные сервисы и разрешённые группы
-src/permissions.mjs  группы прав; каждый новый инструмент нужно отнести к группе — иначе сервер не запустится
-src/config.mjs       настройки: окружение → config.json + хранилище ОС → прежний .env
-src/secrets.mjs      хранилище секретов ОС          src/oauth.mjs   вход через Яндекс ID
-src/tracker*.mjs     Трекер                          src/mail.mjs    Почта (IMAP/SMTP)
-src/calendar.mjs     Календарь (CalDAV)              src/checks.mjs  проверки подключения
-.claude-plugin/      плагин Claude Code и витрина    skills/         сценарии плагина
-packaging/mcpb/      манифест расширения Claude Desktop
+src/main.mjs         entry: no arguments — server, with a command — CLI (src/cli.mjs)
+src/index.mjs        MCP server: configured services, permission groups, in-chat sign-in, workflow prompts
+src/permissions.mjs  permission groups; a new tool without a group stops the server from starting
+src/config.mjs       settings: environment → config.json + OS store → legacy .env
+src/secrets.mjs      OS secret store                   src/oauth.mjs   Yandex ID sign-in (PKCE)
+src/tracker*.mjs     Tracker                           src/mail.mjs    Mail (IMAP/SMTP)
+src/calendar.mjs     Calendar (CalDAV)                 src/checks.mjs  connection checks
+src/scenarios.mjs    workflows outside the plugin: Claude Desktop prompts and personal skills
+.claude-plugin/      Claude Code plugin and marketplace   skills/  workflows (plugin skills)
+packaging/mcpb/      Claude Desktop extension manifest
 ```
 
-Сторонний код, вшитый в сборку, и его лицензии — `dist/THIRD_PARTY_LICENSES.txt`.
+Third-party code bundled into the build and its licenses — `dist/THIRD_PARTY_LICENSES.txt`.
+Contributing — [CONTRIBUTING.md](CONTRIBUTING.md) (in Russian). License — [MIT](LICENSE).
+
+## Support
+
+Questions and bugs — [GitHub Issues](https://github.com/cyxar4uk/ya360-mcp/issues). Security problems — privately,
+see [SECURITY.md](SECURITY.md). Privacy — [PRIVACY.md](PRIVACY.md).

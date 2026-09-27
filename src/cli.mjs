@@ -205,7 +205,7 @@ async function setupTracker(ss, oauthDone) {
   } else {
     t.auth = 'token';
     if (t.envFile) say(`  Сейчас токен берётся из файла ${t.envFile} — Enter, чтобы так и оставить.`);
-    else say('  Нужен OAuth-токен с правами tracker:read и tracker:write (как получить — README, раздел «Трекер»).');
+    else say('  Нужен OAuth-токен с правами tracker:read и tracker:write (как получить — вики, «Подключение аккаунта» → «Своё OAuth-приложение»).');
     const ok = await askVerified(ss, 'tracker', 'tracker.token', 'OAuth-токен Трекера', { canKeep: !!t.envFile });
     if (ok && ss.pending['tracker.token']) delete t.envFile; // ввели свой токен — файл больше не нужен
   }
