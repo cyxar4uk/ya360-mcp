@@ -326,10 +326,18 @@ export function registerMail(server, config) {
   defineTool(server, 'mail_move', {
     title: 'Почта: переложить',
     kind: 'write',
-    description: 'Переложить письма в другую папку (archive, trash, spam или путь). Письма из «Удалённых» можно вернуть этим же инструментом.',
+    description:
+      'Переложить письма в другую папку (archive или путь из mail_list_folders); письма из «Удалённых» можно вернуть этим же инструментом. ' +
+      'В «Удалённые» и «Спам» — только если включена группа прав mail.delete: перед этим назови пользователю письма и получи согласие.',
     input: { folder: folderArg, uids: uidsArg, to: z.string().describe('Папка назначения') },
   }, ({ folder, uids, to }) => withImap(async (client) => {
     const dest = await resolveFolder(client, to);
+    // корзина и спам — по сути удаление (а спам ещё и обучает фильтр): отдельная группа прав
+    const target = (await client.list()).find((f) => f.path === dest);
+    const destructive = target?.specialUse === '\\Trash' || target?.specialUse === '\\Junk' || /^(trash|spam|junk|удал[её]нные|спам)$/i.test(target?.name ?? dest);
+    if (destructive && !config.permissions.has('mail.delete')) {
+      throw new Error(`перенос в «${dest}» — это удаление; нужна группа прав mail.delete (сейчас выключена)`);
+    }
     return inFolder(client, folder, async (path) => {
       const res = await client.messageMove(uids.join(','), dest, { uid: true });
       return { from: path, to: dest, moved: res ? [...(res.uidMap?.keys() ?? uids)] : [] };
