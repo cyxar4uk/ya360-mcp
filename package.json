@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node src/index.mjs",
-    "test": "node --test test/unit.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
     "smoke": "node test/smoke.mjs"
   },
   "engines": {

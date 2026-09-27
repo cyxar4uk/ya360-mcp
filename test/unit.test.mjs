@@ -1,4 +1,4 @@
-/** Проверки без сети: время, текст писем, разбор iCalendar. Запуск: node --test test/unit.mjs */
+/** Проверки без сети: время, текст писем, разбор iCalendar. Запуск: npm test */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
