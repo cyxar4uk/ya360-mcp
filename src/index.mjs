@@ -26,7 +26,7 @@ const config = loadConfig();
 const registered = new Map(); // сервис → способ входа, с которым он подключён
 
 const server = new McpServer(
-  { name: 'ya360', version: '0.1.0' },
+  { name: 'ya360', version: '0.2.0' },
   {
     instructions:
       'Инструменты Яндекс 360: Трекер (tracker_*), Почта (mail_*), Календарь (calendar_*). ' +
