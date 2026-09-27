@@ -7,7 +7,11 @@
  * код забирается сам; если локальный адрес недоступен — страница Яндекса показывает код, его вставляют в консоль.
  * https://yandex.ru/dev/id/doc/ru/codes/code-url
  *
- * Запасной путь — своё приложение с секретом и вход по коду подтверждения (device flow).
+ * Продление: Яндекс выдаёт новый токен по refresh_token только с секретом приложения (проверено 27.09.2026 —
+ * «Wrong client secret»), поэтому токен общего приложения не продлевается: он живёт год, и за две недели до конца
+ * сервер напоминает войти заново.
+ *
+ * Запасной путь — своё приложение с секретом и вход по коду подтверждения (device flow); такой токен продлевается сам.
  */
 
 import { createHash, randomBytes } from 'node:crypto';
@@ -161,6 +165,12 @@ export async function browserLogin({ clientId, scopes, loginHint, say, openUrl, 
     server.close();
     if (result.code) return exchangeCode({ clientId, code: result.code, verifier });
     if (result.error === 'access_denied') throw new Error('доступ не разрешён на странице Яндекса');
+    // у приложения нет части запрошенных прав — входим без списка: Яндекс выдаст все права, какие есть у приложения,
+    // а проверка сервисов покажет, чего не хватает
+    if (scopes?.length && (result.error === 'invalid_scope' || /доступ|scope/i.test(result.description ?? ''))) {
+      say('У приложения нет части запрошенных прав — вхожу с теми, что есть.');
+      return browserLogin({ clientId, loginHint, say, openUrl, askCode, manual, fallback, timeoutMs });
+    }
     if (!fallback) throw new Error(result.error ? `Яндекс ответил: ${result.description}` : 'не дождался подтверждения в браузере');
     if (result.error) say(`Яндекс ответил: ${result.description}. Попробуем с кодом вручную.`);
     else say('Не дождался возврата из браузера. Попробуем с кодом вручную.');
@@ -219,7 +229,7 @@ export async function deviceLogin({ clientId, clientSecret, scopes, deviceName =
   throw new Error('код подтверждения истёк — запусти вход заново');
 }
 
-/** Новый токен по refresh_token. Без секрета (общее приложение с PKCE) — только с client_id. */
+/** Новый токен по refresh_token. Яндекс требует секрет приложения — для своего приложения; общему недоступно. */
 export async function refreshTokens({ clientId, clientSecret, refreshToken }) {
   const params = { grant_type: 'refresh_token', refresh_token: refreshToken, ...(clientSecret ? {} : { client_id: clientId }) };
   const r = await post('/token', params, { clientId, clientSecret });
