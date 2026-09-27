@@ -8,6 +8,8 @@ import { tmpdir } from 'node:os';
 import { loadConfig, homeDir, writeSettings, loadEnvFile } from '../src/config.mjs';
 import { secretStore } from '../src/secrets.mjs';
 import { normalizeTokens } from '../src/oauth.mjs';
+import { parsePermissions } from '../src/permissions.mjs';
+import { launchCommand, registrationBlocker, sameLaunch } from '../src/register.mjs';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'yandex-mcp-test-'));
 
@@ -114,6 +116,60 @@ test('.env: комментарии в конце строки, кавычки, �
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('YANDEX_MCP_READONLY=1 оставляет только чтение, даже если в config.json «full»', () => {
+  const home = tmp();
+  try {
+    writeSettings(home, { permissions: 'full' });
+    const cfg = loadConfig({ env: { YANDEX_MCP_HOME: home, YANDEX_MCP_READONLY: '1' }, legacyPath: null, secrets: {} });
+    assert.deepEqual([...cfg.permissions].sort(), ['calendar.read', 'mail.read', 'tracker.read']);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('опечатка в правах не роняет сервер: регистр не важен, непонятное — только чтение и пояснение', () => {
+  const env = (p) => loadConfig({ env: { YANDEX_MCP_HOME: tmpdir(), YANDEX_MCP_PERMISSIONS: p }, legacyPath: null });
+  assert.ok(env('Assist').permissions.has('mail.draft'));
+  const bad = env('только чтение');
+  assert.deepEqual([...bad.permissions], ['tracker.read', 'mail.read', 'calendar.read']);
+  assert.match(bad.status().problems.join(), /права не разобраны/);
+});
+
+test('один OAuth-токен в окружении включает вход через Яндекс там, где нет пароля', async () => {
+  const cfg = loadConfig({
+    env: { YANDEX_MCP_HOME: tmpdir(), YANDEX_LOGIN: 'ivan@example.ru', YANDEX_OAUTH_TOKEN: 't', YANDEX_CALENDAR_APP_PASSWORD: 'p', YANDEX_TRACKER_ORG_ID: '1' },
+    legacyPath: null,
+  });
+  assert.equal(cfg.mail.auth, 'oauth');
+  assert.equal(cfg.calendar.auth, 'app-password'); // пароль задан — он главнее
+  assert.equal(cfg.tracker.auth, 'oauth');
+  assert.deepEqual(cfg.missing('mail'), []);
+  assert.equal(await cfg.tracker.authorization(), 'OAuth t');
+});
+
+test('.env: значение в кавычках с комментарием после них', () => {
+  const dir = tmp();
+  try {
+    writeFileSync(join(dir, '.env'), 'A="abc"  # пояснение\nB=\'x y\' # ещё\n');
+    assert.deepEqual(loadEnvFile(join(dir, '.env')), { A: 'abc', B: 'x y' });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('корзина и спам — отдельная группа, в «помощника» не входит', () => {
+  assert.ok(!parsePermissions('assist').has('mail.delete'));
+  assert.ok(parsePermissions('full').has('mail.delete'));
+});
+
+test('регистрация: копия из плагина и запуск из кэша npx не регистрируются', () => {
+  assert.match(registrationBlocker(launchCommand('/home/u/.claude/plugins/cache/yandex-360/dist/yandex-mcp.mjs')), /плагин/);
+  assert.match(registrationBlocker(launchCommand('C:\\Users\\u\\AppData\\Local\\npm-cache\\_npx\\abc\\src\\main.mjs')), /npx/);
+  const ok = launchCommand(join(tmpdir(), 'yandex-mcp', 'src', 'main.mjs'));
+  assert.equal(registrationBlocker(ok), null);
+  assert.ok(sameLaunch(`${ok.command} ${ok.args[0]}`.replace(/\\/g, '/'), ok));
 });
 
 test('секрет с переводом строки не записывается ни в одно хранилище', () => {
