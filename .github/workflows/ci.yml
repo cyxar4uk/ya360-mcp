@@ -50,3 +50,5 @@ jobs:
       - run: npx mcpb validate packaging/mcpb/manifest.json
       - name: JSON плагина и витрины читается
         run: node -e "for (const f of ['.claude-plugin/plugin.json','.claude-plugin/marketplace.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
+      - name: Состав ветки плагина — без package.json и lockfile
+        run: node scripts/publish-plugin.mjs --dry
