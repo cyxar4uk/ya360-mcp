@@ -9,8 +9,8 @@
     {
       "name": "ya360",
       "source": {
-        "source": "github",
-        "repo": "cyxar4uk/ya360-mcp",
+        "source": "url",
+        "url": "https://github.com/cyxar4uk/ya360-mcp.git",
         "ref": "plugin"
       },
       "description": "Яндекс Трекер, Почта и Календарь: задачи, спринты, письма, события. Неофициальный.",
