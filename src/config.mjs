@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir, homedir } from 'node:os';
 import { parsePermissions } from './permissions.mjs';
 import { secretStore } from './secrets.mjs';
-import { refreshTokens } from './oauth.mjs';
+import { refreshTokens, SHARED_CLIENT_ID } from './oauth.mjs';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DAY = 24 * 3600 * 1000;
@@ -119,7 +119,8 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
 
   // ── OAuth: один токен на все сервисы, продлевается сам
   const oauth = {
-    clientId: get('YANDEX_OAUTH_CLIENT_ID') || s.oauth?.clientId || '',
+    // своё приложение (переменная или config.json) главнее общего приложения проекта
+    clientId: get('YANDEX_OAUTH_CLIENT_ID') || s.oauth?.clientId || SHARED_CLIENT_ID,
     clientSecret: secret('oauth.clientSecret'),
     staticToken: get('YANDEX_OAUTH_TOKEN'),
     tokens: null,
@@ -138,7 +139,8 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     if (!oauth.tokens?.access_token) throw new Error('вход через Яндекс не выполнен — запусти `ya360-mcp login`');
     const t = oauth.tokens;
     const expiring = t.expires_at && t.expires_at - Date.now() < DAY;
-    if (expiring && t.refresh_token && oauth.clientId && oauth.clientSecret) {
+    // секрет не обязателен: общее приложение продлевает токен по одному client_id
+    if (expiring && t.refresh_token && oauth.clientId) {
       refreshing ??= refreshTokens({ clientId: oauth.clientId, clientSecret: oauth.clientSecret, refreshToken: t.refresh_token })
         .then((fresh) => {
           oauth.tokens = fresh;
@@ -286,7 +288,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
       mail: svcStatus('mail', { login: mail.user || null, auth: mail.auth, credentialFrom: mail.auth === 'oauth' ? null : secretSource('mail.password') }),
       calendar: svcStatus('calendar', { login: calendar.user || null, auth: calendar.auth, credentialFrom: calendar.auth === 'oauth' ? null : secretSource('calendar.password') }),
       oauth: {
-        app: oauth.clientId ? 'задано' : null,
+        app: !oauth.clientId ? null : oauth.clientId === SHARED_CLIENT_ID ? 'общее приложение ya360-mcp' : 'своё приложение',
         loggedIn: oauthReady(),
         expiresAt: oauth.tokens?.expires_at ? new Date(oauth.tokens.expires_at).toISOString() : null,
       },
