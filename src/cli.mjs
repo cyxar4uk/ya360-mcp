@@ -4,14 +4,14 @@
  */
 
 import { resolve } from 'node:path';
-import { spawn } from 'node:child_process';
 import { unlinkSync, existsSync } from 'node:fs';
 import { ROOT, SECRETS, homeDir, readSettings, writeSettings, settingsFile, loadConfig, loadEnvFile } from './config.mjs';
 import { secretStore } from './secrets.mjs';
-import { deviceLogin, SCOPES } from './oauth.mjs';
+import { deviceLogin, SCOPES, browserLogin, scopesFor, yandexProfile, SHARED_CLIENT_ID } from './oauth.mjs';
 import { checkAll, CHECKS, LABELS } from './checks.mjs';
 import { GROUPS, PRESETS, parsePermissions } from './permissions.mjs';
 import { ask, askSecret, confirm, choose, say } from './prompt.mjs';
+import { openUrl } from './util.mjs';
 import {
   hasClaudeCode, registerClaudeCode, registerClaudeDesktop, launchCommand, registrationBlocker, claudeCodeCurrent, sameLaunch, desktopHasServer, SERVER_NAME,
 } from './register.mjs';
@@ -27,18 +27,6 @@ function isZone(tz) {
     return true;
   } catch {
     return false;
-  }
-}
-
-function openUrl(url) {
-  // только простой адрес Яндекса: `cmd /c start` понял бы & и | в ссылке как отдельные команды
-  if (!/^https:\/\/([a-z0-9-]+\.)*(ya|yandex)\.(ru|com)(\/[a-z0-9/._~-]*)?$/i.test(url)) return;
-  const [cmd, args] =
-    process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
-  try {
-    spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref();
-  } catch {
-    // нет браузера — ссылка уже напечатана
   }
 }
 
@@ -133,8 +121,39 @@ async function setupAppPassword(ss, service) {
   await askVerified(ss, service, `${service}.password`, `Пароль приложения для ${GENITIVE[service]}`);
 }
 
-/** Вход через Яндекс по коду подтверждения — для выбранных сервисов. */
-async function oauthLogin(ss, services) {
+/**
+ * Вход через Яндекс в браузере — общее приложение проекта, PKCE, без секрета.
+ * Адрес ящика берётся из профиля Яндекса (право login:email).
+ */
+async function yandexLogin(ss, services, { manual = false } = {}) {
+  const clientId = ss.settings.oauth?.clientId || SHARED_CLIENT_ID;
+  if (!clientId) throw new Error('общее приложение проекта ещё не зарегистрировано — используйте пароли приложений или своё приложение');
+  say('\nВход через Яндекс');
+  const tokens = await browserLogin({
+    clientId,
+    scopes: scopesFor(services),
+    loginHint: ss.settings.login,
+    say: (text) => say(`  ${text}`),
+    openUrl,
+    askCode: () => ask('  Код со страницы Яндекса'),
+    // по SSH браузер откроется не у человека, а на сервере — сразу вход с кодом вручную
+    manual: manual || !!process.env.SSH_CONNECTION,
+  });
+  ss.pending['oauth.tokens'] = JSON.stringify(tokens);
+  for (const s of services) ss.settings[s] = { ...ss.settings[s], auth: 'oauth' };
+  const me = await yandexProfile(tokens.access_token).catch(() => null);
+  if (me?.email) {
+    if (!ss.settings.login) ss.settings.login = me.email;
+    else if (ss.settings.login.toLowerCase() !== me.email.toLowerCase()) {
+      say(`  Вы вошли как ${me.email}, а в настройках указан ${ss.settings.login}.`);
+      if (await confirm(`  Использовать ${me.email}?`, true)) ss.settings.login = me.email;
+    }
+  }
+  say(`  ✓ вход выполнен${me?.email ? ` — ${me.email}` : ''}`);
+}
+
+/** Своё OAuth-приложение с секретом: вход по коду подтверждения (device flow). */
+async function ownAppLogin(ss, services) {
   const o = (ss.settings.oauth ??= {});
   say('\nВход через Яндекс (OAuth). Нужно своё OAuth-приложение — один раз:');
   say('  1. https://oauth.yandex.ru → «Создать приложение», название любое (например, «Claude»).');
@@ -266,41 +285,51 @@ async function setup() {
   say('Настройка ya360-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря.');
   say(`Настройки: ${settingsFile(ss.home)} · секреты: ${ss.store.name}\n`);
 
-  st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', st.login || '', (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), 'нужен адрес вида ivan@yandex.ru');
-  st.timezone = await askUntil('Часовой пояс', st.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow', isZone, 'нужен пояс вида Europe/Moscow');
-
   const services = [];
   for (const s of SERVICES) {
     st[s] = { ...(st[s] ?? {}) };
     st[s].enabled = await confirm(`Подключить ${ACCUSATIVE[s]}?`, st[s].enabled !== false);
     if (st[s].enabled) services.push(s);
   }
+  if (!services.length) {
+    say('Ничего не выбрано — настраивать нечего.');
+    return 0;
+  }
+
+  const methods = [
+    ...(SHARED_CLIENT_ID ? [{ value: 'yandex', label: 'войти через Яндекс — рекомендуется: одна кнопка в браузере, без паролей' }] : []),
+    { value: 'app-password', label: 'пароли приложений — для Почты и Календаря (Трекеру нужен токен)' },
+    { value: 'own-app', label: 'своё OAuth-приложение — если организация разрешает только свои приложения' },
+  ];
+  const ownApp = st.oauth?.clientId && st.oauth.clientId !== SHARED_CLIENT_ID;
+  const was = services.some((s) => st[s].auth === 'oauth') ? (ownApp ? 'own-app' : 'yandex') : SHARED_CLIENT_ID ? 'yandex' : 'app-password';
+  let method = await choose('\nКак входить?', methods, Math.max(0, methods.findIndex((m) => m.value === was)));
+
+  // ошибка входа (отказ на странице, истёк код) не должна выбрасывать уже введённые ответы
+  let oauthDone = false;
+  while (method !== 'app-password' && !oauthDone) {
+    try {
+      if (method === 'yandex') await yandexLogin(ss, services);
+      else await ownAppLogin(ss, services);
+      oauthDone = true;
+    } catch (err) {
+      say(`  ✗ ${err.message}`);
+      const next = await choose('Что дальше?', [
+        { value: 'retry', label: 'попробовать войти ещё раз' },
+        { value: 'passwords', label: 'перейти на пароли приложений' },
+      ]);
+      if (next === 'passwords') method = 'app-password';
+    }
+  }
 
   const mailCal = services.filter((s) => s !== 'tracker');
-  let oauthDone = false;
-  if (mailCal.length) {
-    const method = await choose('\nКак входить в Почту и Календарь?', [
-      { value: 'app-password', label: 'пароли приложений — проще, ничего регистрировать не нужно' },
-      { value: 'oauth', label: 'вход через Яндекс (OAuth) — один вход на все сервисы, нужно своё OAuth-приложение' },
-    ], mailCal.some((s) => st[s].auth === 'oauth') ? 1 : 0);
-    // ошибка входа (неверный секрет, истёк код) не должна выбрасывать уже введённые ответы
-    let useOauth = method === 'oauth';
-    while (useOauth && !oauthDone) {
-      try {
-        await oauthLogin(ss, services);
-        oauthDone = true;
-      } catch (err) {
-        say(`  ✗ ${err.message}`);
-        const next = await choose('Что дальше?', [
-          { value: 'retry', label: 'попробовать вход через Яндекс ещё раз' },
-          { value: 'passwords', label: 'перейти на пароли приложений' },
-        ]);
-        if (next === 'passwords') useOauth = false;
-      }
-    }
-    if (oauthDone) for (const s of mailCal) await verify(ss, s);
-    else for (const s of mailCal) await setupAppPassword(ss, s);
+  if (mailCal.length && !(oauthDone && st.login)) {
+    st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', st.login || '', (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), 'нужен адрес вида ivan@yandex.ru');
   }
+  st.timezone = await askUntil('Часовой пояс', st.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow', isZone, 'нужен пояс вида Europe/Moscow');
+
+  if (oauthDone) for (const s of mailCal) await verify(ss, s);
+  else for (const s of mailCal) await setupAppPassword(ss, s);
   if (st.mail?.enabled) st.mail.fromName = (await ask('Имя отправителя в письмах, необязательно', st.mail.fromName || '')) || undefined;
   if (st.tracker?.enabled) await setupTracker(ss, oauthDone);
 
@@ -325,20 +354,24 @@ async function doctor() {
   return results.some((r) => !r.ok && !r.skipped) ? 1 : 0;
 }
 
-async function login() {
+async function login(flags = []) {
   const ss = session();
   const st = ss.settings;
-  if (!st.login) st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', '', (v) => /@/.test(v), 'нужен адрес с @');
   const services = [];
   for (const s of SERVICES) {
     if (st[s]?.enabled === false) continue;
-    if (await confirm(`Входить через Яндекс в ${ACCUSATIVE[s]}?`, st[s]?.auth === 'oauth' || s !== 'tracker')) {
+    if (await confirm(`Входить через Яндекс в ${ACCUSATIVE[s]}?`, true)) {
       st[s] = { ...(st[s] ?? {}), enabled: true };
       services.push(s);
     }
   }
   if (!services.length) return 0;
-  await oauthLogin(ss, services);
+  const ownApp = st.oauth?.clientId && st.oauth.clientId !== SHARED_CLIENT_ID && ss.existing['oauth.clientSecret'];
+  if (ownApp || flags.includes('--own-app')) await ownAppLogin(ss, services);
+  else await yandexLogin(ss, services, { manual: flags.includes('--manual') });
+  if (!st.login && services.some((s) => s !== 'tracker')) {
+    st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', '', (v) => /@/.test(v), 'нужен адрес с @');
+  }
   for (const s of services) await verify(ss, s);
   say(`Сохранено: ${ss.save()}`);
   return 0;
@@ -462,7 +495,7 @@ function help() {
   ya360-mcp                  запустить сервер (так его запускают Claude Code и Claude Desktop)
   ya360-mcp setup            мастер настройки: вход, проверка, права, подключение к Claude
   ya360-mcp doctor           проверить подключение к сервисам
-  ya360-mcp login            войти через Яндекс (OAuth) вместо паролей приложений
+  ya360-mcp login [--manual]  войти через Яндекс — без паролей; --manual: код вручную (нет браузера, SSH)
   ya360-mcp logout           удалить сохранённые пароли и токены
   ya360-mcp permissions [..] показать или изменить права (read, assist, full, группы)
   ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
@@ -476,7 +509,7 @@ export async function runCli([command, ...rest]) {
   const commands = {
     setup,
     doctor,
-    login,
+    login: () => login(rest),
     logout,
     migrate: () => migrate(rest[0]),
     permissions: () => permissions(rest[0]),

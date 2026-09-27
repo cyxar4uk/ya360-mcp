@@ -2,6 +2,7 @@
 
 import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { join, basename, extname, resolve } from 'node:path';
+import { spawn } from 'node:child_process';
 
 const asText = (data) => (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
 
@@ -26,6 +27,28 @@ export function defineTool(server, name, { title, description, input = {}, kind 
       return { isError: true, content: [{ type: 'text', text: `Ошибка: ${message}` }] };
     }
   });
+}
+
+/** Открыть в браузере только https-адрес Яндекса. Без оболочки: & и ? в ссылке не станут командами. */
+export function openUrl(url) {
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return;
+  }
+  if (u.protocol !== 'https:' || !/(^|\.)(ya|yandex)\.(ru|com)$/i.test(u.hostname)) return;
+  const [cmd, args] =
+    process.platform === 'win32'
+      ? ['rundll32', ['url.dll,FileProtocolHandler', u.href]]
+      : process.platform === 'darwin'
+        ? ['open', [u.href]]
+        : ['xdg-open', [u.href]];
+  try {
+    spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref();
+  } catch {
+    // нет браузера — ссылка уже напечатана
+  }
 }
 
 // ───────────────────────────────────────────── файлы
