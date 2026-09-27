@@ -13,7 +13,7 @@ import { checkAll, CHECKS, LABELS } from './checks.mjs';
 import { GROUPS, PRESETS, parsePermissions } from './permissions.mjs';
 import { ask, askSecret, confirm, choose, say } from './prompt.mjs';
 import {
-  hasClaudeCode, registerClaudeCode, registerClaudeDesktop, launchCommand, registrationBlocker, claudeCodeCurrent, sameLaunch, desktopHasServer,
+  hasClaudeCode, registerClaudeCode, registerClaudeDesktop, launchCommand, registrationBlocker, claudeCodeCurrent, sameLaunch, desktopHasServer, SERVER_NAME,
 } from './register.mjs';
 
 const SERVICES = ['tracker', 'mail', 'calendar'];
@@ -56,7 +56,7 @@ function session({ allowLegacy = false } = {}) {
   const legacyEnv = resolve(ROOT, '.env');
   if (!allowLegacy && !readSettings(home) && existsSync(legacyEnv)) {
     // как только появится config.json, прежний .env перестанет читаться — и настройки из него пропадут
-    throw new Error(`найден прежний ${legacyEnv} — сначала перенесите настройки: yandex-mcp migrate`);
+    throw new Error(`найден прежний ${legacyEnv} — сначала перенесите настройки: ya360-mcp migrate`);
   }
   const store = secretStore(home);
   const settings = structuredClone(readSettings(home) ?? {});
@@ -107,7 +107,7 @@ async function askVerified(ss, service, secretName, question, { canKeep = false 
     if (await verify(ss, service)) return true;
     if (!(await confirm('Ввести заново?', true))) {
       delete ss.pending[secretName];
-      say(`  ${LABELS[service]} останется ненастроенным — вернуться: yandex-mcp setup`);
+      say(`  ${LABELS[service]} останется ненастроенным — вернуться: ya360-mcp setup`);
       return false;
     }
   }
@@ -192,7 +192,7 @@ async function setupTracker(ss, oauthDone) {
 }
 
 async function setupPermissions(ss) {
-  say('\nЧто разрешить Claude? Позже можно поменять: yandex-mcp permissions');
+  say('\nЧто разрешить Claude? Позже можно поменять: ya360-mcp permissions');
   const presets = Object.keys(PRESETS);
   const cur = ss.settings.permissions;
   const options = [...presets.map((p) => ({ value: p, label: `${p} — ${PRESETS[p].title}` })), { value: 'custom', label: 'выбрать группы самому' }];
@@ -226,7 +226,7 @@ const attempt = (fn) => {
 /** Claude Code: не трогаем чужую запись без спроса, свою такую же не переписываем. */
 async function offerClaudeCode(launch, { ask: askFirst = true } = {}) {
   if (!hasClaudeCode()) {
-    say('Claude Code не найден (команды claude нет в PATH) — подключить позже: yandex-mcp register');
+    say('Claude Code не найден (команды claude нет в PATH) — подключить позже: ya360-mcp register');
     return;
   }
   const current = claudeCodeCurrent();
@@ -235,7 +235,7 @@ async function offerClaudeCode(launch, { ask: askFirst = true } = {}) {
     return;
   }
   if (current) {
-    say(`В Claude Code уже есть сервер «yandex»: ${current}`);
+    say(`В Claude Code уже есть сервер «${SERVER_NAME}»: ${current}`);
     if (!(await confirm('Заменить его этим?', false))) return;
   } else if (askFirst && !(await confirm('Подключить сервер к Claude Code (для всех проектов)?', true))) return;
   attempt(() => registerClaudeCode(launch));
@@ -243,7 +243,7 @@ async function offerClaudeCode(launch, { ask: askFirst = true } = {}) {
 
 async function offerClaudeDesktop(launch) {
   if (!(await confirm('Подключить к Claude Desktop (вкладка Chat)?', false))) return;
-  if (desktopHasServer() && !(await confirm('В Claude Desktop уже есть сервер «yandex» — заменить?', false))) return;
+  if (desktopHasServer() && !(await confirm(`В Claude Desktop уже есть сервер «${SERVER_NAME}» — заменить?`, false))) return;
   attempt(() => registerClaudeDesktop(launch));
 }
 
@@ -263,7 +263,7 @@ async function offerRegister() {
 async function setup() {
   const ss = session();
   const st = ss.settings;
-  say('Настройка yandex-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря.');
+  say('Настройка ya360-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря.');
   say(`Настройки: ${settingsFile(ss.home)} · секреты: ${ss.store.name}\n`);
 
   st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', st.login || '', (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), 'нужен адрес вида ivan@yandex.ru');
@@ -308,7 +308,7 @@ async function setup() {
   const file = ss.save();
   say(`\nСохранено: ${file}`);
   await offerRegister();
-  say('\nГотово. Проверить подключение в любой момент: yandex-mcp doctor');
+  say('\nГотово. Проверить подключение в любой момент: ya360-mcp doctor');
   return 0;
 }
 
@@ -352,9 +352,9 @@ async function logout() {
     return 0;
   }
   const store = secretStore(home);
-  if (!(await confirm(`Удалить из хранилища (${store.name}) все пароли и токены yandex-mcp?`, false))) return 0;
+  if (!(await confirm(`Удалить из хранилища (${store.name}) все пароли и токены ya360-mcp?`, false))) return 0;
   for (const n of SECRETS) store.remove(`${settings.account || 'default'}:${n}`);
-  say('Удалено. config.json оставлен; войти заново: yandex-mcp setup');
+  say('Удалено. config.json оставлен; войти заново: ya360-mcp setup');
   return 0;
 }
 
@@ -427,14 +427,14 @@ async function permissions(spec) {
     for (const [p, v] of Object.entries(PRESETS)) say(`  ${p.padEnd(7)} ${v.title}`);
     say('\nГруппы:');
     for (const [g, d] of Object.entries(GROUPS)) say(`  ${g.padEnd(16)} ${d}`);
-    say('\nИзменить: yandex-mcp permissions assist   ·   read,tracker.comment   ·   full,-mail.send');
+    say('\nИзменить: ya360-mcp permissions assist   ·   read,tracker.comment   ·   full,-mail.send');
     return 0;
   }
   parsePermissions(spec); // проверка до записи
   const home = homeDir();
   const settings = readSettings(home);
   if (!settings) {
-    say('Нет config.json — сначала yandex-mcp setup (или задай переменную YANDEX_MCP_PERMISSIONS).');
+    say('Нет config.json — сначала ya360-mcp setup (или задай переменную YANDEX_MCP_PERMISSIONS).');
     return 1;
   }
   settings.permissions = spec.includes(',') ? spec.split(',').map((s) => s.trim()) : spec;
@@ -457,16 +457,16 @@ async function register(target) {
 }
 
 function help() {
-  say(`yandex-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря
+  say(`ya360-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря
 
-  yandex-mcp                  запустить сервер (так его запускают Claude Code и Claude Desktop)
-  yandex-mcp setup            мастер настройки: вход, проверка, права, подключение к Claude
-  yandex-mcp doctor           проверить подключение к сервисам
-  yandex-mcp login            войти через Яндекс (OAuth) вместо паролей приложений
-  yandex-mcp logout           удалить сохранённые пароли и токены
-  yandex-mcp permissions [..] показать или изменить права (read, assist, full, группы)
-  yandex-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
-  yandex-mcp migrate [.env]   перенести настройки из прежнего .env
+  ya360-mcp                  запустить сервер (так его запускают Claude Code и Claude Desktop)
+  ya360-mcp setup            мастер настройки: вход, проверка, права, подключение к Claude
+  ya360-mcp doctor           проверить подключение к сервисам
+  ya360-mcp login            войти через Яндекс (OAuth) вместо паролей приложений
+  ya360-mcp logout           удалить сохранённые пароли и токены
+  ya360-mcp permissions [..] показать или изменить права (read, assist, full, группы)
+  ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
+  ya360-mcp migrate [.env]   перенести настройки из прежнего .env
 
 Настройки: ${settingsFile(homeDir())}`);
   return 0;

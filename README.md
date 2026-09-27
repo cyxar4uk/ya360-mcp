@@ -1,4 +1,4 @@
-# yandex-mcp
+# ya360-mcp
 
 Неофициальный MCP-сервер: Claude работает с **Яндекс Трекером**, **Почтой** и **Календарём** от вашего имени.
 Проект не связан с ООО «Яндекс» и не одобрен им.
@@ -19,8 +19,8 @@
 | Почта | папки, поиск (и по-русски), чтение без отметки «прочитано», вложения | черновик, отправка, отметки, перенос по папкам |
 | Календарь | календари, события с раскрытием повторяющихся | создать, изменить, удалить событие |
 
-Плагин для Claude Code добавляет готовые сценарии: `/yandex-360:sprint-review` — сводка спринта,
-`/yandex-360:inbox-digest` — разбор почты, `/yandex-360:day-plan` — план дня, `/yandex-360:setup-help` — помощь с подключением.
+Плагин для Claude Code добавляет готовые сценарии: `/ya360:sprint-review` — сводка спринта,
+`/ya360:inbox-digest` — разбор почты, `/ya360:day-plan` — план дня, `/ya360:setup-help` — помощь с подключением.
 
 ## Установка
 
@@ -30,22 +30,22 @@
 
 ```
 /plugin marketplace add <адрес репозитория>
-/plugin install yandex-360@yandex-mcp
+/plugin install ya360@ya360-mcp
 ```
 
-Дальше заполните поля плагина (`/plugin` → yandex-360 → настройка): адрес ящика, пароли приложений, токен Трекера.
+Дальше заполните поля плагина (`/plugin` → ya360 → настройка): адрес ящика, пароли приложений, токен Трекера.
 Пароли Claude Code хранит в защищённом хранилище. Вместо полей можно запустить мастер — см. «Вручную».
 
 ### Claude Desktop — расширение
 
-Скачайте `yandex-360-<версия>.mcpb` со страницы выпусков и откройте его (или Настройки → Расширения → Установить).
+Скачайте `ya360-<версия>.mcpb` со страницы выпусков и откройте его (или Настройки → Расширения → Установить).
 Claude Desktop спросит те же поля. Node.js ставить не нужно — используется встроенный в Claude Desktop.
 
 ### Вручную — любой клиент MCP
 
 ```bash
-git clone <адрес репозитория> yandex-mcp
-cd yandex-mcp
+git clone <адрес репозитория> ya360-mcp
+cd ya360-mcp
 npm install
 node src/main.mjs setup
 ```
@@ -98,8 +98,8 @@ node src/main.mjs setup
 
 Откуда сервер берёт значения, по старшинству:
 1. переменные окружения — так передают настройки плагин и расширение (справочник — `.env.example`);
-2. `config.json` в папке настроек (Windows — `%APPDATA%\yandex-mcp`, macOS — `~/Library/Application Support/yandex-mcp`,
-   Linux — `~/.config/yandex-mcp`; другое место — `YANDEX_MCP_HOME`) и секреты в хранилище ОС — так настраивает мастер;
+2. `config.json` в папке настроек (Windows — `%APPDATA%\ya360-mcp`, macOS — `~/Library/Application Support/ya360-mcp`,
+   Linux — `~/.config/ya360-mcp`; другое место — `YANDEX_MCP_HOME`) и секреты в хранилище ОС — так настраивает мастер;
 3. `.env` рядом с кодом — прежний способ, читается, только пока нет `config.json`; перенести: `node src/main.mjs migrate`.
 
 Хранилище секретов: Windows — DPAPI (шифрование под вашей учётной записью), macOS — Связка ключей,
@@ -117,16 +117,16 @@ Linux — Secret Service через `secret-tool` (пакет `libsecret-tools`)
 ## Команды
 
 ```
-yandex-mcp                  запустить сервер (так его запускают клиенты MCP)
-yandex-mcp setup            мастер настройки
-yandex-mcp doctor           проверить подключение
-yandex-mcp login | logout   войти через Яндекс / удалить сохранённые пароли и токены
-yandex-mcp permissions [..] показать или изменить права
-yandex-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
-yandex-mcp migrate [.env]   перенести настройки из прежнего .env
+ya360-mcp                  запустить сервер (так его запускают клиенты MCP)
+ya360-mcp setup            мастер настройки
+ya360-mcp doctor           проверить подключение
+ya360-mcp login | logout   войти через Яндекс / удалить сохранённые пароли и токены
+ya360-mcp permissions [..] показать или изменить права
+ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
+ya360-mcp migrate [.env]   перенести настройки из прежнего .env
 ```
 
-Из папки проекта — `node src/main.mjs <команда>`; из плагина — `node <папка плагина>/dist/yandex-mcp.mjs <команда>`.
+Из папки проекта — `node src/main.mjs <команда>`; из плагина — `node <папка плагина>/dist/ya360-mcp.mjs <команда>`.
 
 ## Ограничения
 
@@ -141,10 +141,10 @@ yandex-mcp migrate [.env]   перенести настройки из преж�
 
 ```bash
 npm test            # проверки без сети
-npm run smoke       # поднять сервер как клиент MCP; SMOKE_ENTRY=dist/yandex-mcp.mjs — проверить сборку
-npm run build       # dist/yandex-mcp.mjs + лицензии зависимостей (коммитится: его запускает плагин)
+npm run smoke       # поднять сервер как клиент MCP; SMOKE_ENTRY=dist/ya360-mcp.mjs — проверить сборку
+npm run build       # dist/ya360-mcp.mjs + лицензии зависимостей (коммитится: его запускает плагин)
 npm run check:dist  # dist совпадает с исходниками
-npm run pack:mcpb   # release/yandex-360-<версия>.mcpb для Claude Desktop
+npm run pack:mcpb   # release/ya360-<версия>.mcpb для Claude Desktop
 ```
 
 ```

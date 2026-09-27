@@ -10,7 +10,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-// SMOKE_ENTRY=dist/yandex-mcp.mjs — проверить собранный файл вместо исходников
+// SMOKE_ENTRY=dist/ya360-mcp.mjs — проверить собранный файл вместо исходников
 const serverPath = process.env.SMOKE_ENTRY ? resolve(process.env.SMOKE_ENTRY) : fileURLToPath(new URL('../src/index.mjs', import.meta.url));
 const transport = new StdioClientTransport({
   command: process.execPath,

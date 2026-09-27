@@ -1,18 +1,36 @@
 {
   "manifest_version": "0.3",
-  "name": "yandex-360",
+  "name": "ya360",
   "display_name": "Яндекс 360: Трекер, Почта, Календарь (неофициальный)",
   "version": "0.0.0",
   "description": "Неофициальное расширение: задачи, спринты и учёт времени в Яндекс Трекере, письма и черновики в Почте, события в Календаре.",
   "long_description": "Права по группам: только чтение (по умолчанию), помощник (ещё комментарии, черновики, раскладка почты) или всё. Пароли и токены хранит Claude Desktop в защищённом хранилище. Не аффилировано с ООО «Яндекс».",
-  "author": { "name": "yandex-mcp" },
-  "keywords": ["yandex", "yandex-360", "tracker", "mail", "calendar"],
+  "author": {
+    "name": "Ilia Mel",
+    "url": "https://github.com/cyxar4uk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cyxar4uk/ya360-mcp.git"
+  },
+  "homepage": "https://github.com/cyxar4uk/ya360-mcp",
+  "support": "https://github.com/cyxar4uk/ya360-mcp/issues",
+  "license": "MIT",
+  "keywords": [
+    "yandex",
+    "ya360",
+    "tracker",
+    "mail",
+    "calendar"
+  ],
   "server": {
     "type": "node",
-    "entry_point": "server/yandex-mcp.mjs",
+    "entry_point": "server/ya360-mcp.mjs",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server/yandex-mcp.mjs"],
+      "args": [
+        "${__dirname}/server/ya360-mcp.mjs"
+      ],
       "env": {
         "YANDEX_LOGIN": "${user_config.login}",
         "YANDEX_TZ": "${user_config.timezone}",
@@ -96,7 +114,13 @@
     }
   },
   "compatibility": {
-    "platforms": ["win32", "darwin", "linux"],
-    "runtimes": { "node": ">=20.0.0" }
+    "platforms": [
+      "win32",
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
   }
 }

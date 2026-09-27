@@ -1,7 +1,7 @@
 /**
  * Настройки сервера. Откуда берутся значения, по старшинству:
  *   1. переменные окружения (так передают настройки плагин Claude Code и расширение Claude Desktop);
- *   2. config.json в папке настроек пользователя + секреты в хранилище ОС (так настраивает `yandex-mcp setup`);
+ *   2. config.json в папке настроек пользователя + секреты в хранилище ОС (так настраивает `ya360-mcp setup`);
  *   3. прежний .env рядом с кодом и файл формата .env.tracker (YANDEX_TRACKER_ENV_FILE) — для совместимости.
  * Значения секретов наружу не выдаются никогда: status() показывает только, есть ли они и откуда.
  */
@@ -44,9 +44,9 @@ export function loadEnvFile(path) {
 /** Папка настроек: YANDEX_MCP_HOME или стандартное место для ОС. */
 export function homeDir(env = process.env, platform = process.platform) {
   if (env.YANDEX_MCP_HOME) return resolve(env.YANDEX_MCP_HOME);
-  if (platform === 'win32') return join(env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'yandex-mcp');
-  if (platform === 'darwin') return join(homedir(), 'Library', 'Application Support', 'yandex-mcp');
-  return join(env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'yandex-mcp');
+  if (platform === 'win32') return join(env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'ya360-mcp');
+  if (platform === 'darwin') return join(homedir(), 'Library', 'Application Support', 'ya360-mcp');
+  return join(env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'ya360-mcp');
 }
 
 export const settingsFile = (home) => join(home, 'config.json');
@@ -128,14 +128,14 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     try {
       oauth.tokens = JSON.parse(stored['oauth.tokens']);
     } catch {
-      problems.push('сохранённый токен Яндекса повреждён — войди заново (yandex-mcp login)');
+      problems.push('сохранённый токен Яндекса повреждён — войди заново (ya360-mcp login)');
     }
   }
   const oauthReady = () => !!(oauth.staticToken || oauth.tokens?.access_token);
   let refreshing = null;
   async function oauthToken() {
     if (oauth.staticToken) return oauth.staticToken;
-    if (!oauth.tokens?.access_token) throw new Error('вход через Яндекс не выполнен — запусти `yandex-mcp login`');
+    if (!oauth.tokens?.access_token) throw new Error('вход через Яндекс не выполнен — запусти `ya360-mcp login`');
     const t = oauth.tokens;
     const expiring = t.expires_at && t.expires_at - Date.now() < DAY;
     if (expiring && t.refresh_token && oauth.clientId && oauth.clientSecret) {
@@ -164,7 +164,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
         throw err;
       }
     }
-    if (t.expires_at && t.expires_at < Date.now()) throw new Error('токен Яндекса истёк и не продлевается — войди заново (yandex-mcp login)');
+    if (t.expires_at && t.expires_at < Date.now()) throw new Error('токен Яндекса истёк и не продлевается — войди заново (ya360-mcp login)');
     return t.access_token;
   }
 
@@ -232,7 +232,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     source: settings ? 'config.json' : legacy ? '.env рядом с кодом' : 'переменные окружения',
     account,
     tz: get('YANDEX_TZ') || s.timezone || 'Europe/Moscow',
-    downloadDir: get('YANDEX_MCP_DOWNLOAD_DIR') || s.downloadDir || join(tmpdir(), 'yandex-mcp'),
+    downloadDir: get('YANDEX_MCP_DOWNLOAD_DIR') || s.downloadDir || join(tmpdir(), 'ya360-mcp'),
     permissions,
     tracker,
     mail,
@@ -242,7 +242,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     store,
   };
 
-  const needOauth = (what) => (oauthReady() ? [] : [`вход через Яндекс для ${what} (yandex-mcp login)`]);
+  const needOauth = (what) => (oauthReady() ? [] : [`вход через Яндекс для ${what} (ya360-mcp login)`]);
 
   /** Чего не хватает сервису; пустой массив — сервис готов. */
   config.missing = (service) => {
@@ -250,7 +250,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     if (service === 'tracker') {
       if (!tracker.enabled) return ['выключен в настройках'];
       if (tracker.auth === 'oauth') out.push(...needOauth('Трекера'));
-      else if (!tracker.token) out.push('токен Трекера (YANDEX_TRACKER_TOKEN или yandex-mcp setup)');
+      else if (!tracker.token) out.push('токен Трекера (YANDEX_TRACKER_TOKEN или ya360-mcp setup)');
       if (!tracker.orgId && !tracker.cloudOrgId) out.push('ID организации: YANDEX_TRACKER_ORG_ID (Яндекс 360) или YANDEX_TRACKER_CLOUD_ORG_ID (Yandex Cloud)');
     }
     for (const [name, c, label] of [['mail', mail, 'Почты'], ['calendar', calendar, 'Календаря']]) {
@@ -258,7 +258,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
       if (!c.enabled) return ['выключен в настройках'];
       if (!c.user) out.push('адрес ящика (YANDEX_LOGIN), например ivan@yandex.ru');
       if (c.auth === 'oauth') out.push(...needOauth(label));
-      else if (!c.password) out.push(`пароль приложения для ${label} (${name === 'mail' ? 'YANDEX_MAIL_APP_PASSWORD' : 'YANDEX_CALENDAR_APP_PASSWORD'} или yandex-mcp setup)`);
+      else if (!c.password) out.push(`пароль приложения для ${label} (${name === 'mail' ? 'YANDEX_MAIL_APP_PASSWORD' : 'YANDEX_CALENDAR_APP_PASSWORD'} или ya360-mcp setup)`);
     }
     return out;
   };

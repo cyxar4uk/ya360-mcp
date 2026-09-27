@@ -1,4 +1,4 @@
-/** Проверки подключения к сервисам — для мастера настройки и `yandex-mcp doctor`. Секретов не печатают. */
+/** Проверки подключения к сервисам — для мастера настройки и `ya360-mcp doctor`. Секретов не печатают. */
 
 import { ImapFlow } from 'imapflow';
 import { createDAVClient } from 'tsdav';

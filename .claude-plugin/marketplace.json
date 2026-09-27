@@ -1,15 +1,23 @@
 {
-  "name": "yandex-mcp",
-  "owner": { "name": "yandex-mcp" },
+  "name": "ya360-mcp",
+  "owner": {
+    "name": "cyxar4uk",
+    "url": "https://github.com/cyxar4uk"
+  },
   "description": "Неофициальные плагины для работы с Яндекс 360 из Claude Code",
   "plugins": [
     {
-      "name": "yandex-360",
+      "name": "ya360",
       "source": "./",
       "description": "Яндекс Трекер, Почта и Календарь: задачи, спринты, письма, события. Неофициальный.",
       "version": "0.1.0",
       "category": "productivity",
-      "tags": ["yandex", "tracker", "mail", "calendar"]
+      "tags": [
+        "yandex",
+        "tracker",
+        "mail",
+        "calendar"
+      ]
     }
   ]
 }

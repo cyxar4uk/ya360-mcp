@@ -39,7 +39,7 @@ export function normalizeTokens(data, now = Date.now()) {
  * Вход по коду: onCode({ userCode, url, expiresIn }) показывает код человеку,
  * дальше опрашиваем Яндекс, пока человек не подтвердит вход (или не истечёт код).
  */
-export async function deviceLogin({ clientId, clientSecret, scopes, deviceName = 'yandex-mcp', onCode }) {
+export async function deviceLogin({ clientId, clientSecret, scopes, deviceName = 'ya360-mcp', onCode }) {
   const start = await post('/device/code', {
     client_id: clientId,
     device_name: deviceName,
@@ -68,7 +68,7 @@ export async function deviceLogin({ clientId, clientSecret, scopes, deviceName =
 /** Новый токен по refresh_token. */
 export async function refreshTokens({ clientId, clientSecret, refreshToken }) {
   const r = await post('/token', { grant_type: 'refresh_token', refresh_token: refreshToken }, { clientId, clientSecret });
-  if (!r.ok) throw new Error(`не удалось продлить токен Яндекса: ${describe(r)} — войди заново (yandex-mcp login)`);
+  if (!r.ok) throw new Error(`не удалось продлить токен Яндекса: ${describe(r)} — войди заново (ya360-mcp login)`);
   const tokens = normalizeTokens(r.data);
   if (!tokens.refresh_token) tokens.refresh_token = refreshToken;
   return tokens;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Точка входа. Без аргументов (так запускают клиенты MCP) — сервер; с командой — консольная утилита:
- *   yandex-mcp setup | doctor | login | logout | migrate | permissions | register | help
+ *   ya360-mcp setup | doctor | login | logout | migrate | permissions | register | help
  */
 
 const [command] = process.argv.slice(2);

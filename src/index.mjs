@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * yandex-mcp — MCP-сервер (stdio) для Яндекс Трекера, Почты и Календаря.
+ * ya360-mcp — MCP-сервер (stdio) для Яндекс Трекера, Почты и Календаря.
  * Подключаются только настроенные сервисы и только разрешённые группы инструментов (src/permissions.mjs).
  */
 
@@ -23,7 +23,7 @@ const SERVICES = [
 ];
 
 const server = new McpServer(
-  { name: 'yandex', version: '0.1.0' },
+  { name: 'ya360', version: '0.1.0' },
   {
     instructions:
       'Инструменты Яндекс 360: Трекер (tracker_*), Почта (mail_*), Календарь (calendar_*). ' +
@@ -50,13 +50,13 @@ const enabled = [];
 for (const [key, label, register] of SERVICES) {
   const gaps = missing(key);
   if (gaps.length) {
-    console.error(`yandex-mcp: ${label} выключен — не задано: ${gaps.join('; ')}`);
+    console.error(`ya360-mcp: ${label} выключен — не задано: ${gaps.join('; ')}`);
     continue;
   }
   register(gated, config);
   enabled.push(label);
 }
-for (const p of status().problems) console.error(`yandex-mcp: ${p}`);
-console.error(`yandex-mcp: подключено — ${enabled.join(', ') || 'ничего'}; права: ${[...config.permissions].join(', ')}`);
+for (const p of status().problems) console.error(`ya360-mcp: ${p}`);
+console.error(`ya360-mcp: подключено — ${enabled.join(', ') || 'ничего'}; права: ${[...config.permissions].join(', ')}`);
 
 await server.connect(new StdioServerTransport());

@@ -11,12 +11,12 @@ import { normalizeTokens } from '../src/oauth.mjs';
 import { parsePermissions } from '../src/permissions.mjs';
 import { launchCommand, registrationBlocker, sameLaunch } from '../src/register.mjs';
 
-const tmp = () => mkdtempSync(join(tmpdir(), 'yandex-mcp-test-'));
+const tmp = () => mkdtempSync(join(tmpdir(), 'ya360-mcp-test-'));
 
 test('папка настроек для каждой ОС и переопределение', () => {
-  assert.equal(homeDir({ APPDATA: 'C:\\Users\\u\\AppData\\Roaming' }, 'win32'), join('C:\\Users\\u\\AppData\\Roaming', 'yandex-mcp'));
-  assert.match(homeDir({}, 'darwin'), /Library[\\/]Application Support[\\/]yandex-mcp$/);
-  assert.equal(homeDir({ XDG_CONFIG_HOME: '/x' }, 'linux'), join('/x', 'yandex-mcp'));
+  assert.equal(homeDir({ APPDATA: 'C:\\Users\\u\\AppData\\Roaming' }, 'win32'), join('C:\\Users\\u\\AppData\\Roaming', 'ya360-mcp'));
+  assert.match(homeDir({}, 'darwin'), /Library[\\/]Application Support[\\/]ya360-mcp$/);
+  assert.equal(homeDir({ XDG_CONFIG_HOME: '/x' }, 'linux'), join('/x', 'ya360-mcp'));
   assert.equal(homeDir({ YANDEX_MCP_HOME: tmpdir() }, 'linux'), tmpdir());
 });
 
@@ -92,7 +92,7 @@ test('вход через Яндекс: без входа понятная ош�
   try {
     writeSettings(home, { login: 'ivan@example.ru', mail: { auth: 'oauth' }, tracker: { auth: 'oauth', orgId: '1' } });
     const cfg = loadConfig({ env: { YANDEX_MCP_HOME: home }, legacyPath: null });
-    assert.match(cfg.missing('mail').join(), /yandex-mcp login/);
+    assert.match(cfg.missing('mail').join(), /ya360-mcp login/);
     await assert.rejects(cfg.mail.credentials(), /вход через Яндекс не выполнен/);
 
     const withToken = loadConfig({ env: { YANDEX_MCP_HOME: home, YANDEX_OAUTH_TOKEN: 'tok' }, legacyPath: null });
@@ -165,9 +165,9 @@ test('корзина и спам — отдельная группа, в «по�
 });
 
 test('регистрация: копия из плагина и запуск из кэша npx не регистрируются', () => {
-  assert.match(registrationBlocker(launchCommand('/home/u/.claude/plugins/cache/yandex-360/dist/yandex-mcp.mjs')), /плагин/);
+  assert.match(registrationBlocker(launchCommand('/home/u/.claude/plugins/cache/ya360/dist/ya360-mcp.mjs')), /плагин/);
   assert.match(registrationBlocker(launchCommand('C:\\Users\\u\\AppData\\Local\\npm-cache\\_npx\\abc\\src\\main.mjs')), /npx/);
-  const ok = launchCommand(join(tmpdir(), 'yandex-mcp', 'src', 'main.mjs'));
+  const ok = launchCommand(join(tmpdir(), 'ya360-mcp', 'src', 'main.mjs'));
   assert.equal(registrationBlocker(ok), null);
   assert.ok(sameLaunch(`${ok.command} ${ok.args[0]}`.replace(/\\/g, '/'), ok));
 });

@@ -1,5 +1,5 @@
 /**
- * Сборка в один файл dist/yandex-mcp.mjs — без node_modules рядом. Его запускают плагин Claude Code
+ * Сборка в один файл dist/ya360-mcp.mjs — без node_modules рядом. Его запускают плагин Claude Code
  * и расширение Claude Desktop. Рядом — dist/THIRD_PARTY_LICENSES.txt: лицензии вшитых зависимостей.
  * `node scripts/build.mjs --check` — проверить, что dist совпадает с исходниками.
  */
@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const outfile = join(root, 'dist', 'yandex-mcp.mjs');
+const outfile = join(root, 'dist', 'ya360-mcp.mjs');
 const licensesFile = join(root, 'dist', 'THIRD_PARTY_LICENSES.txt');
 const check = process.argv.includes('--check');
 
@@ -49,7 +49,7 @@ function licenses(metafile) {
       : `(файла лицензии нет; в package.json: ${pkg.license ?? 'не указана'})`;
     parts.push(`${'='.repeat(78)}\n${pkg.name}@${pkg.version} — ${pkg.license ?? '?'}\n${'='.repeat(78)}\n${text}\n`);
   }
-  return `Сторонний код, вшитый в dist/yandex-mcp.mjs (${parts.length} пакетов)\n\n${parts.join('\n')}`;
+  return `Сторонний код, вшитый в dist/ya360-mcp.mjs (${parts.length} пакетов)\n\n${parts.join('\n')}`;
 }
 
 const licenseText = licenses(result.metafile);
@@ -64,5 +64,5 @@ if (check) {
 } else {
   writeFileSync(licensesFile, licenseText);
   const count = licenseText.match(/\(\d+ пакетов\)/)?.[0] ?? '';
-  console.log(`собрано: dist/yandex-mcp.mjs (${Math.round(readFileSync(outfile).length / 1024)} КБ), лицензии ${count}`);
+  console.log(`собрано: dist/ya360-mcp.mjs (${Math.round(readFileSync(outfile).length / 1024)} КБ), лицензии ${count}`);
 }

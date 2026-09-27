@@ -1,12 +1,30 @@
 {
-  "name": "yandex-360",
+  "name": "ya360",
   "version": "0.1.0",
   "description": "Неофициальный плагин: задачи, спринты и учёт времени в Яндекс Трекере, письма и черновики в Почте, события в Календаре. Права по группам, по умолчанию — только чтение.",
-  "keywords": ["yandex", "yandex-360", "tracker", "mail", "calendar", "caldav", "imap", "mcp"],
+  "author": {
+    "name": "Ilia Mel",
+    "url": "https://github.com/cyxar4uk"
+  },
+  "homepage": "https://github.com/cyxar4uk/ya360-mcp",
+  "repository": "https://github.com/cyxar4uk/ya360-mcp",
+  "license": "MIT",
+  "keywords": [
+    "yandex",
+    "ya360",
+    "tracker",
+    "mail",
+    "calendar",
+    "caldav",
+    "imap",
+    "mcp"
+  ],
   "mcpServers": {
-    "yandex": {
+    "ya360": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/yandex-mcp.mjs"],
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/ya360-mcp.mjs"
+      ],
       "env": {
         "YANDEX_LOGIN": "${user_config.login}",
         "YANDEX_TZ": "${user_config.timezone}",

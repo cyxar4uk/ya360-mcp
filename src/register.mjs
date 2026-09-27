@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from
 import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
-export const SERVER_NAME = 'yandex';
+export const SERVER_NAME = 'ya360';
 
 /**
  * Как запускать сервер: этот же node и этот же файл входа (абсолютные пути — клиенту не нужен PATH).

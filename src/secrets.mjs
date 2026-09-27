@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
-const SERVICE = 'yandex-mcp';
+const SERVICE = 'ya360-mcp';
 
 function run(cmd, args, input) {
   const res = spawnSync(cmd, args, { input, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });

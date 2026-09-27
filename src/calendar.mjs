@@ -146,7 +146,7 @@ export function icalHelpers(tz) {
     if (e.date <= s.date) throw new Error('конец события должен быть позже начала');
 
     const vcal = new ICAL.Component('vcalendar');
-    vcal.addPropertyWithValue('prodid', '-//yandex-mcp//RU');
+    vcal.addPropertyWithValue('prodid', '-//ya360-mcp//RU');
     vcal.addPropertyWithValue('version', '2.0');
     const vevent = new ICAL.Component('vevent');
     vevent.addPropertyWithValue('uid', uid);

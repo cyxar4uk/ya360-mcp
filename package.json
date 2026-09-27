@@ -1,17 +1,43 @@
 {
-  "name": "yandex-mcp",
+  "name": "ya360-mcp",
   "version": "0.1.0",
   "private": true,
-  "description": "Неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря",
+  "description": "Неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря (Яндекс 360) — для Claude Code, Claude Desktop и других клиентов MCP",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "yandex",
+    "yandex-360",
+    "yandex-tracker",
+    "imap",
+    "caldav"
+  ],
+  "homepage": "https://github.com/cyxar4uk/ya360-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/cyxar4uk/ya360-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyxar4uk/ya360-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Ilia Mel (https://github.com/cyxar4uk)",
   "type": "module",
   "bin": {
-    "yandex-mcp": "src/main.mjs"
+    "ya360-mcp": "src/main.mjs"
   },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node src/main.mjs",
     "setup": "node src/main.mjs setup",
     "doctor": "node src/main.mjs doctor",
-    "test": "node --test \"test/*.test.mjs\"",
+    "test": "node --test test/unit.test.mjs test/config.test.mjs",
     "smoke": "node test/smoke.mjs",
     "build": "node scripts/build.mjs",
     "check:dist": "node scripts/build.mjs --check",
