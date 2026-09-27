@@ -6,6 +6,46 @@ import { sourceMarker } from '../src/tracker.mjs';
 import { matchUser } from '../src/tracker-people.mjs';
 import { findFragments, attachmentText } from '../src/mail.mjs';
 import { meetingLink } from '../src/calendar.mjs';
+import { loadSkills, promptText, unplug, parseSkill } from '../src/scenarios.mjs';
+import { runCli } from '../src/cli.mjs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+test('сценарии: все навыки разбираются, заголовок — до тире, ссылки на плагин переписываются', () => {
+  const skills = loadSkills();
+  assert.ok(skills.length >= 11);
+  for (const s of skills) {
+    assert.match(s.name, /^[a-z0-9-]+$/);
+    assert.ok(s.description.length > 20, `${s.name}: нет описания`);
+    assert.ok(!s.title.includes('—'), `${s.name}: заголовок «${s.title}»`);
+  }
+  const s = parseSkill('---\nname: x\ndescription: Стендап — что я сделал\nargument-hint: "[дата]"\n---\nСм. `/ya360:mail-to-task`. Аргументы: $ARGUMENTS', 'x');
+  assert.equal(s.title, 'Стендап');
+  assert.equal(s.hint, '[дата]');
+  assert.equal(promptText(s, 'пятница'), 'См. сценарий «mail-to-task». Аргументы: пятница');
+  assert.equal(unplug(s.body, 'command'), 'См. `/mail-to-task`. Аргументы: $ARGUMENTS');
+});
+
+test('ya360-mcp skills: ставит без префикса, чужие навыки не трогает, удаляет только свои', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ya360-skills-'));
+  const log = console.log;
+  try {
+    mkdirSync(join(dir, 'standup'));
+    writeFileSync(join(dir, 'standup', 'SKILL.md'), 'мой собственный навык');
+    assert.equal(await runCli(['skills', 'install', dir]), 0);
+    assert.equal(readFileSync(join(dir, 'standup', 'SKILL.md'), 'utf8'), 'мой собственный навык', 'чужой навык не затёрт');
+    const followup = readFileSync(join(dir, 'meeting-prep', 'SKILL.md'), 'utf8');
+    assert.ok(!followup.includes('/ya360:'), 'ссылки без префикса плагина');
+    assert.ok(existsSync(join(dir, 'meeting-prep', '.ya360-mcp')));
+    assert.equal(await runCli(['skills', 'remove', dir]), 0);
+    assert.ok(!existsSync(join(dir, 'meeting-prep')));
+    assert.ok(existsSync(join(dir, 'standup', 'SKILL.md')), 'чужой навык не удалён');
+  } finally {
+    console.log = log;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('метка источника: число, устойчивое, разное для разных пунктов и писем', () => {
   assert.equal(sourceMarker({ kind: 'meeting', id: '5893395265', item: 3 }), '5893395265003');
