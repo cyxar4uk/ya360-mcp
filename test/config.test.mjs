@@ -101,6 +101,12 @@ test('вход через Яндекс: без входа понятная ош�
   }
 });
 
+test('секрет с переводом строки не записывается ни в одно хранилище', () => {
+  for (const platform of ['win32', 'darwin', 'linux']) {
+    assert.throws(() => secretStore(tmpdir(), platform).write('a:b', 'x\nadd-generic-password -s evil'), /перевода строки/);
+  }
+});
+
 test('срок жизни токена пересчитывается в момент истечения', () => {
   const t = normalizeTokens({ access_token: 'a', refresh_token: 'r', expires_in: 3600 }, 1000);
   assert.deepEqual(t, { access_token: 'a', refresh_token: 'r', expires_at: 1000 + 3600 * 1000, scope: undefined });
