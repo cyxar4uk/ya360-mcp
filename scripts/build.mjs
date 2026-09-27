@@ -43,7 +43,10 @@ function licenses(metafile) {
     const abs = join(root, dir);
     const pkg = JSON.parse(readFileSync(join(abs, 'package.json'), 'utf8'));
     const file = readdirSync(abs).find((f) => /^(licen[cs]e|copying)(\.|$)/i.test(f));
-    const text = file ? readFileSync(join(abs, file), 'utf8').trim() : `(файла лицензии нет; в package.json: ${pkg.license ?? 'не указана'})`;
+    // переводы строк — только LF: иначе сверка dist на другой ОС ложно покажет расхождение
+    const text = file
+      ? readFileSync(join(abs, file), 'utf8').replace(/\r\n?/g, '\n').trim()
+      : `(файла лицензии нет; в package.json: ${pkg.license ?? 'не указана'})`;
     parts.push(`${'='.repeat(78)}\n${pkg.name}@${pkg.version} — ${pkg.license ?? '?'}\n${'='.repeat(78)}\n${text}\n`);
   }
   return `Сторонний код, вшитый в dist/yandex-mcp.mjs (${parts.length} пакетов)\n\n${parts.join('\n')}`;
