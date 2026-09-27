@@ -1,0 +1,79 @@
+{
+  "name": "yandex-360",
+  "version": "0.1.0",
+  "description": "Неофициальный плагин: задачи, спринты и учёт времени в Яндекс Трекере, письма и черновики в Почте, события в Календаре. Права по группам, по умолчанию — только чтение.",
+  "keywords": ["yandex", "yandex-360", "tracker", "mail", "calendar", "caldav", "imap", "mcp"],
+  "mcpServers": {
+    "yandex": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/yandex-mcp.mjs"],
+      "env": {
+        "YANDEX_LOGIN": "${user_config.login}",
+        "YANDEX_TZ": "${user_config.timezone}",
+        "YANDEX_MCP_PERMISSIONS": "${user_config.permissions}",
+        "YANDEX_MAIL_APP_PASSWORD": "${user_config.mail_app_password}",
+        "YANDEX_CALENDAR_APP_PASSWORD": "${user_config.calendar_app_password}",
+        "YANDEX_TRACKER_TOKEN": "${user_config.tracker_token}",
+        "YANDEX_TRACKER_ORG_ID": "${user_config.tracker_org_id}",
+        "YANDEX_TRACKER_CLOUD_ORG_ID": "${user_config.tracker_cloud_org_id}",
+        "YANDEX_TRACKER_QUEUE": "${user_config.tracker_queue}",
+        "YANDEX_TRACKER_BOARD": "${user_config.tracker_board}"
+      }
+    }
+  },
+  "userConfig": {
+    "login": {
+      "type": "string",
+      "title": "Адрес ящика Яндекса",
+      "description": "Полностью, с @: ivan@yandex.ru или адрес на домене организации. Нужен для Почты и Календаря."
+    },
+    "timezone": {
+      "type": "string",
+      "title": "Часовой пояс",
+      "description": "Например Europe/Moscow. Пусто — Europe/Moscow."
+    },
+    "permissions": {
+      "type": "string",
+      "title": "Права",
+      "description": "read — только чтение; assist — ещё комментарии, черновики, раскладка почты; full — всё. Можно группы: read,tracker.comment или full,-mail.send. Пусто — только чтение."
+    },
+    "mail_app_password": {
+      "type": "string",
+      "title": "Пароль приложения для Почты",
+      "description": "id.yandex.ru/security → Пароли приложений → «Почта». В настройках Почты включить IMAP. Пусто — Почта не подключается.",
+      "sensitive": true
+    },
+    "calendar_app_password": {
+      "type": "string",
+      "title": "Пароль приложения для Календаря",
+      "description": "Там же, тип «Календарь» — это другой пароль, почтовый не подойдёт. Пусто — Календарь не подключается.",
+      "sensitive": true
+    },
+    "tracker_token": {
+      "type": "string",
+      "title": "OAuth-токен Трекера",
+      "description": "Токен с правами tracker:read и tracker:write. Пусто — Трекер не подключается.",
+      "sensitive": true
+    },
+    "tracker_org_id": {
+      "type": "string",
+      "title": "ID организации Яндекс 360",
+      "description": "admin.yandex.ru → Профиль организации. Заполни это или поле Yandex Cloud."
+    },
+    "tracker_cloud_org_id": {
+      "type": "string",
+      "title": "ID организации Yandex Cloud",
+      "description": "console.yandex.cloud → Organization. Если организация Трекера в Yandex Cloud."
+    },
+    "tracker_queue": {
+      "type": "string",
+      "title": "Очередь Трекера по умолчанию",
+      "description": "Ключ очереди, например PROJ. Необязательно."
+    },
+    "tracker_board": {
+      "type": "string",
+      "title": "Доска для спринтов по умолчанию",
+      "description": "id или название доски. Необязательно."
+    }
+  }
+}

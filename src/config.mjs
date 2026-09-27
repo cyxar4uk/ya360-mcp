@@ -76,7 +76,8 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
   const s = settings ?? {};
   // прежний .env читается, только пока нет config.json — иначе он незаметно перекрывал бы новые настройки
   const legacy = settings ? null : loadEnvFile(legacyPath);
-  const get = (name) => String(env[name] ?? legacy?.[name] ?? '').trim();
+  // незаполненное поле плагина может прийти как есть — «${user_config.x}»; считаем его пустым
+  const get = (name) => String(env[name] ?? legacy?.[name] ?? '').trim().replace(/^\$\{[^}]+\}$/, '');
   const flag = (name) => /^(1|true|yes|да)$/i.test(get(name));
   const problems = [];
 

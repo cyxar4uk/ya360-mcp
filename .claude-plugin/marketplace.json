@@ -1,0 +1,15 @@
+{
+  "name": "yandex-mcp",
+  "owner": { "name": "yandex-mcp" },
+  "description": "Неофициальные плагины для работы с Яндекс 360 из Claude Code",
+  "plugins": [
+    {
+      "name": "yandex-360",
+      "source": "./",
+      "description": "Яндекс Трекер, Почта и Календарь: задачи, спринты, письма, события. Неофициальный.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": ["yandex", "tracker", "mail", "calendar"]
+    }
+  ]
+}
