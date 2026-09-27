@@ -153,6 +153,8 @@ Linux — Secret Service через `secret-tool` (пакет `libsecret-tools`)
   (`claude mcp add` и/или `claude_desktop_config.json`) и `ya360-mcp skills install` (`~/.claude/skills`).
 - **Что исполняется:** плагин запускает `node dist/ya360-mcp.mjs` — сборку esbuild из `src/` и пакетов, закреплённых
   в `package-lock.json`; CI пересобирает её при каждой отправке и падает, если она не совпадает с закоммиченной.
+  Плагин ставится из ветки [`plugin`](https://github.com/cyxar4uk/ya360-mcp/tree/plugin): манифест, сборка, сценарии,
+  исходники для чтения и документы — без `package.json`, поэтому при установке пакеты npm не скачиваются.
 
 ## Команды
 
@@ -188,6 +190,7 @@ npm run check:dist  # dist совпадает с исходниками
 npm run pack:mcpb   # release/ya360-<версия>.mcpb для Claude Desktop
 npm run wiki:tools  # страница вики «Инструменты» из сервера
 npm run wiki:sync   # выложить docs/wiki в вики GitHub
+npm run publish:plugin  # выложить плагин в ветку plugin — её ставят пользователи и берёт каталог
 ```
 
 ```

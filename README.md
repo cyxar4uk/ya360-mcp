@@ -180,8 +180,9 @@ Report vulnerabilities privately: Security → Report a vulnerability ([SECURITY
   and `ya360-mcp skills install` (copies the workflows to `~/.claude/skills`).
 - **The code that runs:** the plugin starts `node dist/ya360-mcp.mjs` — a single-file esbuild bundle of `src/` and the
   npm packages pinned in `package-lock.json`. CI rebuilds it on every push and fails if it differs from the committed
-  file (`npm run check:dist`); third-party licenses are in `dist/THIRD_PARTY_LICENSES.txt`. When Claude Code installs
-  the plugin it also runs `npm ci --ignore-scripts` for `package-lock.json`; the bundle doesn't need those packages.
+  file (`npm run check:dist`); third-party licenses are in `dist/THIRD_PARTY_LICENSES.txt`. The plugin is installed from
+  the [`plugin`](https://github.com/cyxar4uk/ya360-mcp/tree/plugin) branch: the manifest, the bundle, the workflows,
+  the readable `src/` and the documents — without `package.json`, so installing it downloads no npm packages.
 
 ## Commands
 
@@ -218,6 +219,7 @@ npm run check:dist  # dist matches the sources
 npm run pack:mcpb   # release/ya360-<version>.mcpb for Claude Desktop
 npm run wiki:tools  # regenerate the wiki tool reference from the server
 npm run wiki:sync   # publish docs/wiki to the GitHub wiki
+npm run publish:plugin  # publish the plugin to the `plugin` branch (what users and the directory install)
 ```
 
 ```

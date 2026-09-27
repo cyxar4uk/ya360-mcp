@@ -12,6 +12,7 @@ npm run smoke          # поднять сервер как клиент MCP (с
 npm run build          # собрать dist/ya360-mcp.mjs — его запускают плагин и расширение
 npm run check:dist     # dist совпадает с исходниками (проверяется и на GitHub)
 npm run pack:mcpb      # расширение Claude Desktop в release/
+npm run publish:plugin # выложить плагин в ветку plugin — её ставят пользователи и берёт каталог
 ```
 
 Нужен Node.js 20+. Код — обычный JavaScript (ES-модули), без сборки для разработки.
