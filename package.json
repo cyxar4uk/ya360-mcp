@@ -1,6 +1,6 @@
 {
   "name": "ya360-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря (Яндекс 360) — для Claude Code, Claude Desktop и других клиентов MCP",
   "keywords": [
@@ -45,7 +45,8 @@
     "check:dist": "node scripts/build.mjs --check",
     "pack:mcpb": "node scripts/pack-mcpb.mjs",
     "wiki:tools": "node scripts/wiki-tools.mjs",
-    "wiki:sync": "node scripts/sync-wiki.mjs"
+    "wiki:sync": "node scripts/sync-wiki.mjs",
+    "publish:plugin": "node scripts/publish-plugin.mjs"
   },
   "engines": {
     "node": ">=20"

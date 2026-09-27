@@ -1,6 +1,6 @@
 {
   "name": "ya360",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Unofficial Yandex 360 plugin: Tracker issues, sprints and time tracking, Mail search and drafts, Calendar events, plus ready-made workflows (standup, meeting follow-up, weekly report). Runs locally; read-only by default.",
   "author": {
     "name": "Ilia Mel",
