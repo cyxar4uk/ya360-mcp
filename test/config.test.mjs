@@ -2,10 +2,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfig, homeDir, writeSettings } from '../src/config.mjs';
+import { loadConfig, homeDir, writeSettings, loadEnvFile } from '../src/config.mjs';
 import { secretStore } from '../src/secrets.mjs';
 import { normalizeTokens } from '../src/oauth.mjs';
 
@@ -98,6 +98,21 @@ test('вход через Яндекс: без входа понятная ош�
     assert.equal(await withToken.tracker.authorization(), 'OAuth tok');
   } finally {
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('.env: комментарии в конце строки, кавычки, пустые значения; образец .env.example читается', () => {
+  const dir = tmp();
+  try {
+    const file = join(dir, '.env');
+    writeFileSync(file, 'A=read   # пояснение\nB="p#ss # внутри кавычек"\nC=\nD=pa#ss\n# E=нет\n');
+    assert.deepEqual(loadEnvFile(file), { A: 'read', B: 'p#ss # внутри кавычек', C: '', D: 'pa#ss' });
+    const example = loadEnvFile(new URL('../.env.example', import.meta.url).pathname.replace(/^\/(\w:)/, '$1'));
+    assert.equal(example.YANDEX_MCP_PERMISSIONS, 'read');
+    assert.equal(example.YANDEX_LOGIN, '');
+    assert.doesNotThrow(() => loadConfig({ env: { YANDEX_MCP_HOME: dir }, legacyPath: file }));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 
