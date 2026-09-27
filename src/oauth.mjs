@@ -17,9 +17,9 @@ const OAUTH = 'https://oauth.yandex.ru';
 
 /**
  * Общее приложение проекта «ya360-mcp» на oauth.yandex.ru. Идентификатор открытый — это не секрет.
- * Пусто, пока приложение не зарегистрировано; YANDEX_OAUTH_CLIENT_ID или своё приложение в настройках главнее.
+ * YANDEX_OAUTH_CLIENT_ID или своё приложение в настройках главнее.
  */
-export const SHARED_CLIENT_ID = '';
+export const SHARED_CLIENT_ID = 'c3382d8fe79c46919620012a38a6b199';
 
 /** Адреса возврата, прописанные в общем приложении. */
 export const LOOPBACK_PORT = 51734;
