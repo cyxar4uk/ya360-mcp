@@ -49,6 +49,21 @@ test('фрагменты расшифровки: совпадения со со�
   assert.equal(findFragments(TRANSCRIPT, ['нет такого'], 2).fragments.length, 0);
 });
 
+test('фрагменты расшифровки: говорящий в строке — тот, чья метка стоит перед найденным словом', () => {
+  const inline = [
+    'Олег Смирнов:',
+    '[00:18:40] Хорошо.',
+    'Олег Смирнов: [00:19:03] А репозиторий вы мне скидывали? Пётр К. (1): [00:19:11] Нет, репозиторий ещё не скидывали. [00:19:13] Закину сегодня.',
+    '[00:19:20] И сервер проверю.',
+  ].join('\n');
+  const r = findFragments(inline, ['закину'], 0);
+  assert.equal(r.fragments[0].speaker, 'Пётр К. (1)');
+  const s = findFragments(inline, ['сервер'], 0);
+  assert.equal(s.fragments[0].speaker, 'Пётр К. (1)', 'строка без метки — последний говорящий выше, в том числе из середины строки');
+  const q = findFragments(inline, ['скидывали?'], 0);
+  assert.equal(q.fragments[0].speaker, 'Олег Смирнов');
+});
+
 test('текст вложения: кодировка из заголовка, windows-1251 без заголовка, HTML в текст, не текст — понятная ошибка', () => {
   const utf = { filename: 'a.txt', contentType: 'text/plain', content: Buffer.from('Привет') };
   assert.equal(attachmentText(utf), 'Привет');
