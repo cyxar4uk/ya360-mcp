@@ -89,6 +89,34 @@ test('отказ на странице Яндекса — понятная ош�
   }
 });
 
+test('у приложения нет части прав — повторный вход без списка прав', async () => {
+  const seen = fakeYandex();
+  const urls = [];
+  try {
+    const tokens = await browserLogin({
+      clientId: 'cid',
+      scopes: ['tracker:read', 'login:info'],
+      say: () => {},
+      askCode: async () => '',
+      openUrl: async (url) => {
+        urls.push(url);
+        const p = new URL(url).searchParams;
+        const answer = urls.length === 1
+          ? `error=invalid_scope&error_description=${encodeURIComponent('Запрашиваемые доступы отсутствуют у данного приложения')}`
+          : 'code=CODE3';
+        await realFetch(`${p.get('redirect_uri')}?${answer}&state=${p.get('state')}`);
+      },
+    });
+    assert.equal(urls.length, 2);
+    assert.ok(new URL(urls[0]).searchParams.has('scope'));
+    assert.ok(!new URL(urls[1]).searchParams.has('scope'), 'повтор — без списка прав');
+    assert.equal(seen.code, 'CODE3');
+    assert.equal(tokens.access_token, 'A');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('ручной путь: ссылка на страницу с кодом, код из консоли', async () => {
   const seen = fakeYandex();
   let opened;

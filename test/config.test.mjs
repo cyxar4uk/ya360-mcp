@@ -178,6 +178,35 @@ test('секрет с переводом строки не записывает�
   }
 });
 
+test('общее приложение: токен без секрета не продлевается, за две недели до срока — напоминание', async () => {
+  const home = tmp();
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    throw new Error('сети быть не должно');
+  };
+  try {
+    writeSettings(home, { login: 'ivan@example.ru', mail: { auth: 'oauth' } });
+    const tokens = (days) => JSON.stringify({ access_token: 'acc', refresh_token: 'ref', expires_at: Date.now() + days * 24 * 3600 * 1000 });
+    const soon = loadConfig({ env: { YANDEX_MCP_HOME: home }, legacyPath: null, secrets: { 'oauth.tokens': tokens(0.5) } });
+    assert.equal((await soon.mail.credentials()).accessToken, 'acc'); // истекает через 12 часов — продлить нельзя, работаем
+    assert.equal(calls, 0, 'попыток продления без секрета нет');
+    assert.match(soon.status().problems.join(), /истекает через 0 дн/);
+    assert.equal(soon.status().oauth.renewsItself, false);
+
+    const fine = loadConfig({ env: { YANDEX_MCP_HOME: home }, legacyPath: null, secrets: { 'oauth.tokens': tokens(200) } });
+    assert.ok(!fine.status().problems.some((p) => /истекает/.test(p)));
+
+    const expired = loadConfig({ env: { YANDEX_MCP_HOME: home }, legacyPath: null, secrets: { 'oauth.tokens': tokens(-1) } });
+    await assert.rejects(expired.mail.credentials(), /истёк/);
+    assert.match(expired.status().problems.join(), /истёк/);
+  } finally {
+    globalThis.fetch = realFetch;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('срок жизни токена пересчитывается в момент истечения', () => {
   const t = normalizeTokens({ access_token: 'a', refresh_token: 'r', expires_in: 3600 }, 1000);
   assert.deepEqual(t, { access_token: 'a', refresh_token: 'r', expires_at: 1000 + 3600 * 1000, scope: undefined });
