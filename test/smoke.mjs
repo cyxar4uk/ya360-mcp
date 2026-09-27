@@ -8,8 +8,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const serverPath = fileURLToPath(new URL('../src/index.mjs', import.meta.url));
+// SMOKE_ENTRY=dist/yandex-mcp.mjs — проверить собранный файл вместо исходников
+const serverPath = process.env.SMOKE_ENTRY ? resolve(process.env.SMOKE_ENTRY) : fileURLToPath(new URL('../src/index.mjs', import.meta.url));
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [serverPath],
