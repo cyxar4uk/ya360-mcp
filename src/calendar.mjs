@@ -356,8 +356,6 @@ export function registerCalendar(server, config) {
     };
   });
 
-  if (config.readonly) return;
-
   // ───────────────────────────────────────────── запись
 
   const eventFields = {

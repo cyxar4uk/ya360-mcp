@@ -220,8 +220,6 @@ export function registerMail(server, config) {
       return { path: file, size: att.size, contentType: att.contentType };
     })));
 
-  if (config.readonly) return;
-
   const from = m.fromName ? { name: m.fromName, address: m.user } : m.user;
   const composeInput = {
     to: z.union([z.string(), z.array(z.string())]).optional().describe('Адрес или список адресов'),

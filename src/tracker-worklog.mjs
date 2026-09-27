@@ -107,8 +107,6 @@ export function registerTrackerWorklog({ server, config, api, enc, ref, key }) {
     };
   });
 
-  if (config.readonly) return;
-
   defineTool(server, 'tracker_add_worklog', {
     title: 'Трекер: списать время',
     kind: 'write',

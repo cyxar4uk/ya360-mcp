@@ -156,8 +156,6 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
     };
   });
 
-  if (config.readonly) return;
-
   defineTool(server, 'tracker_set_sprint', {
     title: 'Трекер: задача в спринт',
     kind: 'write',

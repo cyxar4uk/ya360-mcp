@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import { parsePermissions } from './permissions.mjs';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -49,7 +50,8 @@ const fromTrackerFile = (name) => (trackerFile[name] ?? '').trim();
 const login = get('YANDEX_LOGIN');
 
 export const config = {
-  readonly: flag('YANDEX_MCP_READONLY'),
+  // YANDEX_MCP_PERMISSIONS главнее; прежний флажок READONLY=1 равен заготовке read
+  permissions: parsePermissions(get('YANDEX_MCP_PERMISSIONS') || (flag('YANDEX_MCP_READONLY') ? 'read' : 'full')),
   tz: get('YANDEX_TZ') || 'Europe/Moscow',
   downloadDir: get('YANDEX_MCP_DOWNLOAD_DIR') || join(tmpdir(), 'yandex-mcp'),
 
@@ -103,7 +105,7 @@ export function status() {
     return { enabled: m.length === 0, missing: m, ...extra };
   };
   return {
-    readonly: config.readonly,
+    permissions: [...config.permissions],
     timezone: config.tz,
     downloadDir: config.downloadDir,
     tracker: svc('tracker', {

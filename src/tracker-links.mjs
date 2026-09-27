@@ -25,8 +25,6 @@ export function registerTrackerLinks({ server, config, api, enc, link, key }) {
     input: { key },
   }, ({ key: k }) => linksOf(k));
 
-  if (config.readonly) return;
-
   defineTool(server, 'tracker_link_issues', {
     title: 'Трекер: связать задачи',
     kind: 'write',

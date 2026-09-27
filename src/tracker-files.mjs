@@ -36,8 +36,6 @@ export function registerTrackerFiles({ server, config, request, api, enc, attach
     return { path, name: a.name, size: data.length, mimetype: a.mimetype };
   });
 
-  if (config.readonly) return;
-
   defineTool(server, 'tracker_upload_attachment', {
     title: 'Трекер: приложить файл',
     kind: 'write',

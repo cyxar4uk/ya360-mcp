@@ -202,13 +202,10 @@ export function registerTracker(server, config) {
     return list.map((x) => ({ id: x.id, name: x.display, to: ref(x.to) }));
   });
 
-  // у каждого модуля сначала чтение, потом (если не readonly) запись
   registerTrackerLinks(ctx);
   registerTrackerFiles(ctx);
   registerTrackerWorklog(ctx);
   registerTrackerAgile(ctx);
-
-  if (config.readonly) return;
 
   defineTool(server, 'tracker_add_comment', {
     title: 'Трекер: комментарий',
