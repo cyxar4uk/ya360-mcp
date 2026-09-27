@@ -123,6 +123,7 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
       status: ref(i.status),
       assignee: ref(i.assignee) ?? 'без исполнителя',
       points: i.storyPoints ?? 0,
+      ...(i.deadline ? { deadline: i.deadline } : {}),
       components: i.components?.map(ref),
       done: !!i.resolution,
       url: url(i.key),

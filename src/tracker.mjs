@@ -280,7 +280,9 @@ export function registerTracker(server, config) {
       marker = sourceMarker(source);
       const existing = await findByMarker(marker);
       if (existing) return { duplicate: true, note: 'задача из этого источника уже есть — новая не создана', ...brief(existing) };
-      const label = source.label || { meeting: `встреча №${source.id}`, mail: 'письмо', other: source.id }[source.kind];
+      let label = source.label || { meeting: `встреча №${source.id}`, mail: 'письмо', other: source.id }[source.kind];
+      // номер встречи — отдельным словом: по нему поиск находит все задачи встречи (метка — слитное число с пунктом)
+      if (source.kind === 'meeting' && !label.includes(source.id)) label += ` (встреча №${source.id})`;
       description = `${description ? `${description}\n\n` : ''}---\nИсточник: ${label}. Метка ya360: ${marker}`;
     }
     const body = { queue: q, summary, ...fields };
