@@ -1,11 +1,24 @@
 /** Яндекс Трекер: API v3 (https://yandex.ru/support/tracker/ru/about-api). */
 
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { defineTool, truncate } from './util.mjs';
 import { registerTrackerLinks } from './tracker-links.mjs';
 import { registerTrackerFiles } from './tracker-files.mjs';
 import { registerTrackerWorklog } from './tracker-worklog.mjs';
 import { registerTrackerAgile } from './tracker-agile.mjs';
+import { registerTrackerPeople } from './tracker-people.mjs';
+import { registerTrackerActivity } from './tracker-activity.mjs';
+
+/**
+ * Числовая метка источника задачи: поиск Трекера по тексту находит числа, а не произвольные строки
+ * (`Description: ~"…"` не фильтрует вовсе). Встреча — её номер и номер пункта; остальное — число из хеша.
+ */
+export function sourceMarker({ kind, id, item }) {
+  if (kind === 'meeting' && /^\d{4,}$/.test(id)) return `${id}${String(item ?? 0).padStart(3, '0')}`;
+  const hex = createHash('sha256').update(`${kind}:${String(id).trim()}:${item ?? ''}`).digest('hex').slice(0, 13);
+  return BigInt(`0x${hex}`).toString().padStart(16, '0');
+}
 
 export function registerTracker(server, config) {
   const t = config.tracker;
@@ -61,6 +74,10 @@ export function registerTracker(server, config) {
     priority: ref(i.priority),
     assignee: ref(i.assignee),
     updatedAt: i.updatedAt,
+    // срок, оценка и спринт нужны для просрочек и загрузки — показываем, только если заданы
+    ...(i.deadline ? { deadline: i.deadline } : {}),
+    ...(i.storyPoints != null ? { storyPoints: i.storyPoints } : {}),
+    ...(i.sprint?.length ? { sprint: i.sprint.map(ref) } : {}),
     url: url(i.key),
   });
 
@@ -111,6 +128,12 @@ export function registerTracker(server, config) {
     author: ref(a.createdBy),
     createdAt: a.createdAt,
   });
+
+  /** Задача с меткой источника: поиск по тексту находит число, точность проверяем по описанию. */
+  async function findByMarker(marker) {
+    const found = await api('POST', '/issues/_search?perPage=10', { query: `"${marker}"` });
+    return found.find((i) => String(i.description ?? '').includes(`Метка ya360: ${marker}`)) ?? null;
+  }
 
   const key = z.string().describe('Ключ задачи, например PROJ-123');
   const ctx = { server, config, request, api, enc, ref, url, brief, full, link, attachmentOut, key };
@@ -208,6 +231,8 @@ export function registerTracker(server, config) {
   registerTrackerFiles(ctx);
   registerTrackerWorklog(ctx);
   registerTrackerAgile(ctx);
+  registerTrackerPeople(ctx);
+  registerTrackerActivity(ctx);
 
   defineTool(server, 'tracker_add_comment', {
     title: 'Трекер: комментарий',
@@ -227,7 +252,9 @@ export function registerTracker(server, config) {
     title: 'Трекер: новая задача',
     kind: 'write',
     description:
-      'Создать задачу. fields — любые дополнительные поля API (sprint, storyPoints, components, tags, followers, поля очереди). ' +
+      'Создать задачу. fields — любые дополнительные поля API (sprint, storyPoints, components, tags, followers, deadline, поля очереди). ' +
+      'source — откуда задача (встреча, письмо): в описание добавится строка «Источник: …» с меткой, и если задача с такой меткой ' +
+      'уже есть, новая не создаётся — вернётся существующая (duplicate: true). ' +
       'Если в проекте есть свой регламент заведения задач (скрипт, обязательные поля) — следуй ему.',
     input: {
       queue: z.string().optional().describe('Ключ очереди; по умолчанию — из настроек'),
@@ -238,10 +265,24 @@ export function registerTracker(server, config) {
       assignee: z.string().optional().describe('Логин исполнителя'),
       priority: z.string().optional().describe('Ключ приоритета: minor, normal, critical…'),
       fields: z.record(z.string(), z.any()).optional(),
+      source: z.object({
+        kind: z.enum(['meeting', 'mail', 'other']),
+        id: z.string().min(1).describe('№ встречи Телемоста, Message-ID письма или другой устойчивый идентификатор'),
+        item: z.number().int().min(0).optional().describe('Номер пункта (для встречи)'),
+        label: z.string().optional().describe('Как назвать источник: «встреча „Планирование", 26.09.2026, пункт 3»'),
+      }).optional(),
     },
-  }, async ({ queue, summary, description, type, parent, assignee, priority, fields }) => {
+  }, async ({ queue, summary, description, type, parent, assignee, priority, fields, source }) => {
     const q = queue || t.defaultQueue;
     if (!q) throw new Error('нужна очередь (queue): очередь по умолчанию не задана');
+    let marker;
+    if (source) {
+      marker = sourceMarker(source);
+      const existing = await findByMarker(marker);
+      if (existing) return { duplicate: true, note: 'задача из этого источника уже есть — новая не создана', ...brief(existing) };
+      const label = source.label || { meeting: `встреча №${source.id}`, mail: 'письмо', other: source.id }[source.kind];
+      description = `${description ? `${description}\n\n` : ''}---\nИсточник: ${label}. Метка ya360: ${marker}`;
+    }
     const body = { queue: q, summary, ...fields };
     if (description) body.description = description;
     if (type) body.type = type;

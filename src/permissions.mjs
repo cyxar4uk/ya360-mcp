@@ -27,6 +27,7 @@ export const TOOL_GROUPS = {
     'tracker_whoami', 'tracker_list_queues', 'tracker_search_issues', 'tracker_get_issue', 'tracker_get_comments',
     'tracker_get_transitions', 'tracker_get_links', 'tracker_list_attachments', 'tracker_download_attachment',
     'tracker_get_worklog', 'tracker_search_worklog', 'tracker_list_boards', 'tracker_list_sprints', 'tracker_sprint_issues',
+    'tracker_find_user', 'tracker_my_activity',
   ]),
   ...T('tracker.comment', ['tracker_add_comment']),
   ...T('tracker.edit', [
@@ -35,7 +36,7 @@ export const TOOL_GROUPS = {
   ]),
   ...T('tracker.files', ['tracker_upload_attachment', 'tracker_delete_attachment']),
   ...T('tracker.worklog', ['tracker_add_worklog', 'tracker_update_worklog', 'tracker_delete_worklog']),
-  ...T('mail.read', ['mail_list_folders', 'mail_search', 'mail_read', 'mail_save_attachment']),
+  ...T('mail.read', ['mail_list_folders', 'mail_search', 'mail_read', 'mail_save_attachment', 'mail_read_attachment']),
   ...T('mail.draft', ['mail_create_draft']),
   ...T('mail.organize', ['mail_set_flags', 'mail_move']),
   ...T('mail.send', ['mail_send']),
