@@ -20,7 +20,7 @@ export function registerTracker(server, config) {
     const target = path.startsWith('http') ? new URL(path) : new URL(`${t.api}${path}`);
     // токен уходит только в API Трекера, даже если адрес пришёл из ответа сервера
     if (target.host !== apiHost) throw new Error(`отказ: адрес ${target.host} не относится к API Трекера`);
-    const headers = { Authorization: `OAuth ${t.token}` };
+    const headers = { Authorization: await t.authorization() };
     if (t.orgId) headers['X-Org-Id'] = t.orgId;
     else headers['X-Cloud-Org-Id'] = t.cloudOrgId;
     let payload;
@@ -137,7 +137,8 @@ export function registerTracker(server, config) {
       'Поиск задач. Либо query на языке запросов Трекера, например ' +
       '`Assignee: me() Resolution: empty() "Sort by": Updated DESC` или `Queue: PROJ Status: "В работе"`, ' +
       'либо filter — объект полей, например {"assignee": "ivanov", "status": "inProgress"}. ' +
-      'queue добавляется к любому из вариантов. Возвращает краткие карточки; подробности — tracker_get_issue.',
+      'queue добавляется к любому из вариантов; без условий — очередь по умолчанию из настроек. ' +
+      'Возвращает краткие карточки; подробности — tracker_get_issue.',
     input: {
       query: z.string().optional().describe('Запрос на языке запросов Трекера'),
       queue: z.string().optional().describe('Ключ очереди, например PROJ'),
@@ -152,8 +153,9 @@ export function registerTracker(server, config) {
       body = { query: queue ? `Queue: ${queue} ${query}` : query };
     } else {
       const f = { ...(filter ?? {}) };
-      if (queue) f.queue = queue;
-      if (!Object.keys(f).length) throw new Error('нужен query, queue или filter');
+      const q = queue || (!Object.keys(f).length ? t.defaultQueue : '');
+      if (q) f.queue = q;
+      if (!Object.keys(f).length) throw new Error('нужен query, queue или filter (очередь по умолчанию не задана)');
       body = { filter: f, ...(order ? { order } : {}) };
     }
     const { data, total } = await request('POST', `/issues/_search?perPage=${limit}&page=${page}`, body);
@@ -228,7 +230,7 @@ export function registerTracker(server, config) {
       'Создать задачу. fields — любые дополнительные поля API (sprint, storyPoints, components, tags, followers, поля очереди). ' +
       'Если в проекте есть свой регламент заведения задач (скрипт, обязательные поля) — следуй ему.',
     input: {
-      queue: z.string().describe('Ключ очереди'),
+      queue: z.string().optional().describe('Ключ очереди; по умолчанию — из настроек'),
       summary: z.string().min(1),
       description: z.string().optional(),
       type: z.string().optional().describe('Тип: task, bug, epic… (ключ типа)'),
@@ -238,7 +240,9 @@ export function registerTracker(server, config) {
       fields: z.record(z.string(), z.any()).optional(),
     },
   }, async ({ queue, summary, description, type, parent, assignee, priority, fields }) => {
-    const body = { queue, summary, ...fields };
+    const q = queue || t.defaultQueue;
+    if (!q) throw new Error('нужна очередь (queue): очередь по умолчанию не задана');
+    const body = { queue: q, summary, ...fields };
     if (description) body.description = description;
     if (type) body.type = type;
     if (parent) body.parent = parent;

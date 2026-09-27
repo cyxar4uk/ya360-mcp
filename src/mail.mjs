@@ -27,7 +27,7 @@ export function registerMail(server, config) {
       host: m.imapHost,
       port: 993,
       secure: true,
-      auth: { user: m.user, pass: m.password },
+      auth: await m.credentials(),
       logger: false,
     });
     client.on('error', () => {}); // сетевые ошибки придут и через await; без обработчика процесс падает
@@ -289,11 +289,12 @@ export function registerMail(server, config) {
     const mail = args.reply_to_uid !== undefined
       ? await withImap((client) => buildMessage(client, args))
       : await buildMessage(null, args);
+    const cr = await m.credentials();
     const transport = nodemailer.createTransport({
       host: m.smtpHost,
       port: 465,
       secure: true,
-      auth: { user: m.user, pass: m.password },
+      auth: cr.accessToken ? { type: 'OAuth2', user: cr.user, accessToken: cr.accessToken } : { user: cr.user, pass: cr.pass },
     });
     const info = await transport.sendMail(mail);
     return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected, subject: mail.subject };

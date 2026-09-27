@@ -54,7 +54,7 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
   }
 
   /** sprint — id, имя или его начало («S1»); без sprint — идущий спринт. board сужает поиск. */
-  async function resolveSprint(sprint, board) {
+  async function resolveSprint(sprint, board = config.tracker.defaultBoard || undefined) {
     if (sprint !== undefined && /^\d+$/.test(String(sprint))) return api('GET', `/sprints/${enc(sprint)}`);
     const where = board ? [await resolveBoard(board)] : await boards();
     const all = (await Promise.all(where.map((b) => sprintsOf(b.id)))).flatMap((list) => list ?? []);
@@ -88,11 +88,13 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
     title: 'Трекер: спринты доски',
     description: 'Спринты доски по порядку: id, имя, статус (запланирован / идёт / завершён), даты.',
     input: {
-      board: z.union([z.string(), z.number()]).describe('id или название доски'),
+      board: z.union([z.string(), z.number()]).optional().describe('id или название доски; по умолчанию — из настроек'),
       include_archived: z.boolean().default(false),
     },
   }, async ({ board, include_archived }) => {
-    const b = await resolveBoard(board);
+    const want = board ?? config.tracker.defaultBoard;
+    if (!want) throw new Error('укажи доску (board): доска по умолчанию не задана');
+    const b = await resolveBoard(want);
     const list = await sprintsOf(b.id);
     if (!list) throw new Error(`доска «${b.name}» без спринтов (канбан или простая доска)`);
     return list

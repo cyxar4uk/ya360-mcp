@@ -6,12 +6,15 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { config, missing, status } from './config.mjs';
+import { loadConfig } from './config.mjs';
 import { defineTool } from './util.mjs';
 import { gate, GROUPS } from './permissions.mjs';
 import { registerTracker } from './tracker.mjs';
 import { registerMail } from './mail.mjs';
 import { registerCalendar } from './calendar.mjs';
+
+const config = loadConfig();
+const { missing, status } = config;
 
 const SERVICES = [
   ['tracker', 'Трекер', registerTracker],

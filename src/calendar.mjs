@@ -246,17 +246,25 @@ export function registerCalendar(server, config) {
   const c = config.calendar;
   const tz = config.tz;
 
+  // клиент CalDAV запоминает заголовок входа при создании — после продления токена создаём заново
   let clientPromise;
-  const dav = () =>
-    (clientPromise ??= createDAVClient({
-      serverUrl: c.url,
-      credentials: { username: c.user, password: c.password },
-      authMethod: 'Basic',
-      defaultAccountType: 'caldav',
-    }).catch((err) => {
+  let clientKey;
+  const dav = async () => {
+    const cr = await c.credentials();
+    const key = cr.type === 'oauth' ? cr.token : 'password';
+    if (clientPromise && clientKey === key) return clientPromise;
+    clientKey = key;
+    const auth =
+      cr.type === 'oauth'
+        ? { credentials: {}, authMethod: 'Custom', authFunction: async () => ({ Authorization: `OAuth ${cr.token}` }) }
+        : { credentials: { username: cr.username, password: cr.password }, authMethod: 'Basic' };
+    clientPromise = createDAVClient({ serverUrl: c.url, defaultAccountType: 'caldav', ...auth }).catch((err) => {
       clientPromise = undefined;
-      throw new Error(`не удалось войти в CalDAV (${c.url}): ${err.message}. Проверь логин и пароль приложения типа «Календарь».`);
-    }));
+      const hint = cr.type === 'oauth' ? 'Проверь, что у OAuth-приложения есть право calendar:all.' : 'Проверь логин и пароль приложения типа «Календарь».';
+      throw new Error(`не удалось войти в CalDAV (${c.url}): ${err.message}. ${hint}`);
+    });
+    return clientPromise;
+  };
 
   const nameOf = (cal) => (typeof cal.displayName === 'string' && cal.displayName) || cal.url;
   const { parse, occurrences, buildEvent, applyUpdate } = icalHelpers(tz);
