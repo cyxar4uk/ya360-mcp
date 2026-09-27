@@ -1,0 +1,102 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-360",
+  "display_name": "Яндекс 360: Трекер, Почта, Календарь (неофициальный)",
+  "version": "0.0.0",
+  "description": "Неофициальное расширение: задачи, спринты и учёт времени в Яндекс Трекере, письма и черновики в Почте, события в Календаре.",
+  "long_description": "Права по группам: только чтение (по умолчанию), помощник (ещё комментарии, черновики, раскладка почты) или всё. Пароли и токены хранит Claude Desktop в защищённом хранилище. Не аффилировано с ООО «Яндекс».",
+  "author": { "name": "yandex-mcp" },
+  "keywords": ["yandex", "yandex-360", "tracker", "mail", "calendar"],
+  "server": {
+    "type": "node",
+    "entry_point": "server/yandex-mcp.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/yandex-mcp.mjs"],
+      "env": {
+        "YANDEX_LOGIN": "${user_config.login}",
+        "YANDEX_TZ": "${user_config.timezone}",
+        "YANDEX_MCP_PERMISSIONS": "${user_config.permissions}",
+        "YANDEX_MAIL_APP_PASSWORD": "${user_config.mail_app_password}",
+        "YANDEX_CALENDAR_APP_PASSWORD": "${user_config.calendar_app_password}",
+        "YANDEX_TRACKER_TOKEN": "${user_config.tracker_token}",
+        "YANDEX_TRACKER_ORG_ID": "${user_config.tracker_org_id}",
+        "YANDEX_TRACKER_CLOUD_ORG_ID": "${user_config.tracker_cloud_org_id}",
+        "YANDEX_TRACKER_QUEUE": "${user_config.tracker_queue}",
+        "YANDEX_TRACKER_BOARD": "${user_config.tracker_board}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "user_config": {
+    "login": {
+      "type": "string",
+      "title": "Адрес ящика Яндекса",
+      "description": "Полностью, с @: ivan@yandex.ru или адрес на домене организации. Нужен для Почты и Календаря.",
+      "required": false
+    },
+    "timezone": {
+      "type": "string",
+      "title": "Часовой пояс",
+      "description": "Например Europe/Moscow.",
+      "default": "Europe/Moscow",
+      "required": false
+    },
+    "permissions": {
+      "type": "string",
+      "title": "Права",
+      "description": "read — только чтение; assist — ещё комментарии, черновики, раскладка почты; full — всё. Можно группы: read,tracker.comment или full,-mail.send.",
+      "default": "read",
+      "required": false
+    },
+    "mail_app_password": {
+      "type": "string",
+      "title": "Пароль приложения для Почты",
+      "description": "id.yandex.ru/security → Пароли приложений → «Почта». В настройках Почты включить IMAP. Пусто — Почта не подключается.",
+      "sensitive": true,
+      "required": false
+    },
+    "calendar_app_password": {
+      "type": "string",
+      "title": "Пароль приложения для Календаря",
+      "description": "Там же, тип «Календарь» — почтовый не подойдёт. Пусто — Календарь не подключается.",
+      "sensitive": true,
+      "required": false
+    },
+    "tracker_token": {
+      "type": "string",
+      "title": "OAuth-токен Трекера",
+      "description": "Токен с правами tracker:read и tracker:write. Пусто — Трекер не подключается.",
+      "sensitive": true,
+      "required": false
+    },
+    "tracker_org_id": {
+      "type": "string",
+      "title": "ID организации Яндекс 360",
+      "description": "admin.yandex.ru → Профиль организации. Заполни это или поле Yandex Cloud.",
+      "required": false
+    },
+    "tracker_cloud_org_id": {
+      "type": "string",
+      "title": "ID организации Yandex Cloud",
+      "description": "console.yandex.cloud → Organization — если организация Трекера в Yandex Cloud.",
+      "required": false
+    },
+    "tracker_queue": {
+      "type": "string",
+      "title": "Очередь Трекера по умолчанию",
+      "description": "Ключ очереди, например PROJ. Необязательно.",
+      "required": false
+    },
+    "tracker_board": {
+      "type": "string",
+      "title": "Доска для спринтов по умолчанию",
+      "description": "id или название доски. Необязательно.",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": { "node": ">=20.0.0" }
+  }
+}

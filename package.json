@@ -12,7 +12,10 @@
     "setup": "node src/main.mjs setup",
     "doctor": "node src/main.mjs doctor",
     "test": "node --test \"test/*.test.mjs\"",
-    "smoke": "node test/smoke.mjs"
+    "smoke": "node test/smoke.mjs",
+    "build": "node scripts/build.mjs",
+    "check:dist": "node scripts/build.mjs --check",
+    "pack:mcpb": "node scripts/pack-mcpb.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -25,5 +28,9 @@
     "nodemailer": "^10.0.10",
     "tsdav": "^2.3.4",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "esbuild": "^0.28.2"
   }
 }
