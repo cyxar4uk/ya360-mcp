@@ -125,7 +125,7 @@ async function setupAppPassword(ss, service) {
  * Вход через Яндекс в браузере — общее приложение проекта, PKCE, без секрета.
  * Адрес ящика берётся из профиля Яндекса (право login:email).
  */
-async function yandexLogin(ss, services, { manual = false } = {}) {
+async function yandexLogin(ss, services, { manual = false, yes = false } = {}) {
   const clientId = ss.settings.oauth?.clientId || SHARED_CLIENT_ID;
   if (!clientId) throw new Error('общее приложение проекта ещё не зарегистрировано — используйте пароли приложений или своё приложение');
   say('\nВход через Яндекс');
@@ -146,7 +146,8 @@ async function yandexLogin(ss, services, { manual = false } = {}) {
     if (!ss.settings.login) ss.settings.login = me.email;
     else if (ss.settings.login.toLowerCase() !== me.email.toLowerCase()) {
       say(`  Вы вошли как ${me.email}, а в настройках указан ${ss.settings.login}.`);
-      if (await confirm(`  Использовать ${me.email}?`, true)) ss.settings.login = me.email;
+      if (yes) say('  Оставляю адрес из настроек; поменять — ya360-mcp setup.');
+      else if (await confirm(`  Использовать ${me.email}?`, true)) ss.settings.login = me.email;
     }
   }
   say(`  ✓ вход выполнен${me?.email ? ` — ${me.email}` : ''}`);
@@ -360,7 +361,7 @@ async function login(flags = []) {
   const services = [];
   for (const s of SERVICES) {
     if (st[s]?.enabled === false) continue;
-    if (await confirm(`Входить через Яндекс в ${ACCUSATIVE[s]}?`, true)) {
+    if (flags.includes('--yes') || (await confirm(`Входить через Яндекс в ${ACCUSATIVE[s]}?`, true))) {
       st[s] = { ...(st[s] ?? {}), enabled: true };
       services.push(s);
     }
@@ -368,7 +369,7 @@ async function login(flags = []) {
   if (!services.length) return 0;
   const ownApp = st.oauth?.clientId && st.oauth.clientId !== SHARED_CLIENT_ID && ss.existing['oauth.clientSecret'];
   if (ownApp || flags.includes('--own-app')) await ownAppLogin(ss, services);
-  else await yandexLogin(ss, services, { manual: flags.includes('--manual') });
+  else await yandexLogin(ss, services, { manual: flags.includes('--manual'), yes: flags.includes('--yes') });
   if (!st.login && services.some((s) => s !== 'tracker')) {
     st.login = await askUntil('Адрес ящика Яндекса (полностью, с @)', '', (v) => /@/.test(v), 'нужен адрес с @');
   }
@@ -495,7 +496,7 @@ function help() {
   ya360-mcp                  запустить сервер (так его запускают Claude Code и Claude Desktop)
   ya360-mcp setup            мастер настройки: вход, проверка, права, подключение к Claude
   ya360-mcp doctor           проверить подключение к сервисам
-  ya360-mcp login [--manual]  войти через Яндекс — без паролей; --manual: код вручную (нет браузера, SSH)
+  ya360-mcp login [--manual] [--yes]  войти через Яндекс без паролей; --manual — код вручную (SSH), --yes — без вопросов
   ya360-mcp logout           удалить сохранённые пароли и токены
   ya360-mcp permissions [..] показать или изменить права (read, assist, full, группы)
   ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
