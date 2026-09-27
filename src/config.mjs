@@ -67,17 +67,20 @@ export function writeSettings(home, settings) {
 /**
  * Собирает настройки. Секреты из хранилища ОС читаются одним заходом и только если есть config.json
  * и значение не пришло из окружения.
+ *   settings — настройки из памяти вместо config.json (мастер проверяет вход до сохранения);
+ *   secrets  — секреты из памяти вместо хранилища ОС (имя → значение).
  */
-export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env') } = {}) {
+export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env'), settings: given, secrets: givenSecrets } = {}) {
   const home = homeDir(env);
-  const settings = readSettings(home);
+  const settings = given ?? readSettings(home);
   const s = settings ?? {};
-  const legacy = loadEnvFile(legacyPath);
+  // прежний .env читается, только пока нет config.json — иначе он незаметно перекрывал бы новые настройки
+  const legacy = settings ? null : loadEnvFile(legacyPath);
   const get = (name) => String(env[name] ?? legacy?.[name] ?? '').trim();
   const flag = (name) => /^(1|true|yes|да)$/i.test(get(name));
   const problems = [];
 
-  const trackerFilePath = get('YANDEX_TRACKER_ENV_FILE');
+  const trackerFilePath = get('YANDEX_TRACKER_ENV_FILE') || s.tracker?.envFile || '';
   let trackerFile = {};
   if (trackerFilePath) {
     trackerFile = loadEnvFile(resolve(ROOT, trackerFilePath)) ?? {};
@@ -95,7 +98,8 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
 
   const store = settings ? secretStore(home) : null;
   let stored = {};
-  if (store) {
+  if (givenSecrets) stored = { ...givenSecrets };
+  else if (store) {
     const wanted = SECRETS.filter((n) => !fromEnv[n]).map((n) => `${account}:${n}`);
     try {
       const raw = store.read(wanted);

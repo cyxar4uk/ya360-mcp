@@ -2,13 +2,15 @@
   "name": "yandex-mcp",
   "version": "0.1.0",
   "private": true,
-  "description": "MCP-сервер для Яндекс Трекера, Почты и Календаря",
+  "description": "Неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря",
   "type": "module",
   "bin": {
-    "yandex-mcp": "src/index.mjs"
+    "yandex-mcp": "src/main.mjs"
   },
   "scripts": {
-    "start": "node src/index.mjs",
+    "start": "node src/main.mjs",
+    "setup": "node src/main.mjs setup",
+    "doctor": "node src/main.mjs doctor",
     "test": "node --test \"test/*.test.mjs\"",
     "smoke": "node test/smoke.mjs"
   },
