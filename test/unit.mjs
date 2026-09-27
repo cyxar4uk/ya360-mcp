@@ -6,6 +6,22 @@ import MailComposer from 'nodemailer/lib/mail-composer';
 import { parseUserTime, formatInTz, htmlToText, startOfDay } from '../src/util.mjs';
 import { icalHelpers } from '../src/calendar.mjs';
 import { parseDuration, durationHours } from '../src/tracker-worklog.mjs';
+import { parsePermissions, GROUPS, TOOL_GROUPS, PRESETS } from '../src/permissions.mjs';
+
+test('права: заготовки, группы, маски и исключения', () => {
+  assert.deepEqual([...parsePermissions('read')], ['tracker.read', 'mail.read', 'calendar.read']);
+  const assist = parsePermissions('assist');
+  assert.ok(assist.has('mail.draft') && assist.has('tracker.comment'));
+  assert.ok(!assist.has('mail.send') && !assist.has('calendar.write'));
+  const custom = parsePermissions('full,-mail.send');
+  assert.equal(custom.size, Object.keys(GROUPS).length - 1);
+  assert.ok(!custom.has('mail.send'));
+  assert.deepEqual([...parsePermissions(['read', 'tracker.*'])].filter((g) => g.startsWith('tracker')).length, 5);
+  assert.throws(() => parsePermissions('mail.everything'), /неизвестное право/);
+  // каждая группа из списка инструментов существует, а заготовки ссылаются только на существующие группы
+  for (const g of Object.values(TOOL_GROUPS)) assert.ok(g === null || GROUPS[g], `нет группы ${g}`);
+  for (const p of Object.values(PRESETS)) for (const g of p.groups) assert.ok(GROUPS[g]);
+});
 
 const TZ = 'Europe/Moscow';
 const { occurrences, icalTime, buildEvent, applyUpdate } = icalHelpers(TZ);
