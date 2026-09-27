@@ -41,7 +41,9 @@
     "smoke": "node test/smoke.mjs",
     "build": "node scripts/build.mjs",
     "check:dist": "node scripts/build.mjs --check",
-    "pack:mcpb": "node scripts/pack-mcpb.mjs"
+    "pack:mcpb": "node scripts/pack-mcpb.mjs",
+    "wiki:tools": "node scripts/wiki-tools.mjs",
+    "wiki:sync": "node scripts/sync-wiki.mjs"
   },
   "engines": {
     "node": ">=20"
