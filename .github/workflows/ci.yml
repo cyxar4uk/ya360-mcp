@@ -32,7 +32,10 @@ jobs:
       - name: Сервер поднимается из сборки
         if: matrix.node == 22
         shell: bash
-        run: SMOKE_ENTRY=dist/ya360-mcp.mjs node test/smoke.mjs | grep -q '^Инструментов:'
+        # сначала в файл: `| grep -q` закрыл бы канал на первом совпадении, и тест упал бы с EPIPE
+        run: |
+          SMOKE_ENTRY=dist/ya360-mcp.mjs node test/smoke.mjs > smoke.txt
+          grep '^Инструментов:' smoke.txt
 
   manifests:
     name: Манифесты плагина и расширения
