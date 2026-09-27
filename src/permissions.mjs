@@ -22,6 +22,7 @@ const T = (group, names) => Object.fromEntries(names.map((n) => [n, group]));
 
 export const TOOL_GROUPS = {
   yandex_status: null, // доступен всегда
+  yandex_login: null, // без него не подключиться; сам вход подтверждает человек в браузере
   ...T('tracker.read', [
     'tracker_whoami', 'tracker_list_queues', 'tracker_search_issues', 'tracker_get_issue', 'tracker_get_comments',
     'tracker_get_transitions', 'tracker_get_links', 'tracker_list_attachments', 'tracker_download_attachment',
