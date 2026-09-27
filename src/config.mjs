@@ -30,8 +30,11 @@ export function loadEnvFile(path) {
     if (eq === -1) continue;
     const key = line.slice(0, eq).trim();
     let val = line.slice(eq + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
-    // комментарий в конце строки: «KEY=value   # пояснение» и «KEY=   # пояснение»; «pa#ss» остаётся значением
+    const quote = val[0] === '"' || val[0] === "'" ? val[0] : null;
+    const close = quote ? val.indexOf(quote, 1) : -1;
+    // в кавычках — всё до закрывающей кавычки, хвост («  # пояснение») отбрасываем
+    if (close > 0) val = val.slice(1, close);
+    // без кавычек комментарий — «#» в начале или после пробела: «KEY=v  # x», «KEY=  # x»; «pa#ss» — значение
     else val = val.replace(/(^|\s+)#.*$/, '');
     out[key] = val;
   }
@@ -139,30 +142,53 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
       refreshing ??= refreshTokens({ clientId: oauth.clientId, clientSecret: oauth.clientSecret, refreshToken: t.refresh_token })
         .then((fresh) => {
           oauth.tokens = fresh;
-          store?.write(`${account}:oauth.tokens`, JSON.stringify(fresh));
+          try {
+            store?.write(`${account}:oauth.tokens`, JSON.stringify(fresh));
+          } catch (err) {
+            // новый токен в памяти работает; не сохранили — при следующем запуске продлим ещё раз
+            problems.push(`продлённый токен не сохранён: ${err.message}`);
+          }
           return fresh;
         })
         .finally(() => {
           refreshing = null;
         });
-      return (await refreshing).access_token;
+      try {
+        return (await refreshing).access_token;
+      } catch (err) {
+        // продлить не вышло (сеть, сменился секрет), но старый токен ещё жив — работаем с ним
+        if (t.expires_at > Date.now()) {
+          problems.push(err.message);
+          return t.access_token;
+        }
+        throw err;
+      }
     }
     if (t.expires_at && t.expires_at < Date.now()) throw new Error('токен Яндекса истёк и не продлевается — войди заново (yandex-mcp login)');
     return t.access_token;
   }
 
   // ── права: в режиме только-окружения по умолчанию только чтение, в прежнем .env — всё, как было
-  const permissionsSpec =
-    get('YANDEX_MCP_PERMISSIONS') ||
-    s.permissions ||
-    (flag('YANDEX_MCP_READONLY') ? 'read' : legacy && !settings ? 'full' : 'read');
+  const permissionsSpec = get('YANDEX_MCP_PERMISSIONS') || s.permissions || (legacy && !settings ? 'full' : 'read');
+  let permissions;
+  try {
+    const spec = Array.isArray(permissionsSpec) ? permissionsSpec.map((x) => String(x).toLowerCase()) : String(permissionsSpec).toLowerCase();
+    permissions = parsePermissions(spec);
+  } catch (err) {
+    // опечатка в поле «Права» не должна ронять сервер: работаем на чтение и говорим об этом в yandex_status
+    problems.push(`права не разобраны (${err.message}) — включено только чтение`);
+    permissions = parsePermissions('read');
+  }
+  // аварийный выключатель: YANDEX_MCP_READONLY=1 оставляет только чтение, что бы ни было в настройках
+  if (flag('YANDEX_MCP_READONLY')) for (const g of [...permissions]) if (!g.endsWith('.read')) permissions.delete(g);
 
   const login = get('YANDEX_LOGIN') || s.login || '';
   const svc = (name) => s[name] ?? {};
 
   const tracker = {
     enabled: svc('tracker').enabled !== false,
-    auth: get('YANDEX_TRACKER_TOKEN') || trackerFile.TRACKER_TOKEN ? 'token' : svc('tracker').auth || 'token',
+    // явный токен Трекера главнее; иначе способ из настроек; в режиме окружения с одним OAuth-токеном — он
+    auth: get('YANDEX_TRACKER_TOKEN') || trackerFile.TRACKER_TOKEN ? 'token' : svc('tracker').auth || (oauth.staticToken && !secret('tracker.token') ? 'oauth' : 'token'),
     token: secret('tracker.token'),
     orgId: get('YANDEX_TRACKER_ORG_ID') || trackerFile.TRACKER_ORG_ID || svc('tracker').orgId || '',
     cloudOrgId: get('YANDEX_TRACKER_CLOUD_ORG_ID') || trackerFile.TRACKER_CLOUD_ORG_ID || svc('tracker').cloudOrgId || '',
@@ -175,7 +201,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
 
   const mail = {
     enabled: svc('mail').enabled !== false,
-    auth: svc('mail').auth || 'app-password',
+    auth: svc('mail').auth || (oauth.staticToken && !secret('mail.password') ? 'oauth' : 'app-password'),
     user: get('YANDEX_MAIL_LOGIN') || svc('mail').login || login,
     password: secret('mail.password'),
     fromName: get('YANDEX_MAIL_FROM_NAME') || svc('mail').fromName || '',
@@ -189,7 +215,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
 
   const calendar = {
     enabled: svc('calendar').enabled !== false,
-    auth: svc('calendar').auth || 'app-password',
+    auth: svc('calendar').auth || (oauth.staticToken && !secret('calendar.password') ? 'oauth' : 'app-password'),
     user: get('YANDEX_CALENDAR_LOGIN') || svc('calendar').login || login,
     password: secret('calendar.password'),
     url: get('YANDEX_CALDAV_URL') || 'https://caldav.yandex.ru',
@@ -207,7 +233,7 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     account,
     tz: get('YANDEX_TZ') || s.timezone || 'Europe/Moscow',
     downloadDir: get('YANDEX_MCP_DOWNLOAD_DIR') || s.downloadDir || join(tmpdir(), 'yandex-mcp'),
-    permissions: parsePermissions(permissionsSpec),
+    permissions,
     tracker,
     mail,
     calendar,
