@@ -8,13 +8,14 @@ const asText = (data) => (typeof data === 'string' ? data : JSON.stringify(data,
 
 /**
  * Регистрирует инструмент; ошибки превращает в ответ isError, чтобы модель увидела причину,
- * а не обрыв соединения. kind: 'read' | 'write' | 'send' — для подсказок клиенту.
+ * а не обрыв соединения. kind — для подсказок клиенту: 'read' ничего не меняет; 'write' и 'send' только добавляют;
+ * 'update' перезаписывает или убирает существующее (правка, перенос в корзину); 'delete' удаляет.
  */
 export function defineTool(server, name, { title, description, input = {}, kind = 'read' }, handler) {
   const annotations = {
     title,
     readOnlyHint: kind === 'read',
-    destructiveHint: kind === 'delete',
+    destructiveHint: kind === 'update' || kind === 'delete',
     openWorldHint: true,
   };
   server.registerTool(name, { title, description, inputSchema: input, annotations }, async (args) => {

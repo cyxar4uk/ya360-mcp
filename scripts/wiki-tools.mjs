@@ -36,7 +36,7 @@ const SECTIONS = [
   ['Календарь', (n) => n.startsWith('calendar_')],
   ['Служебные', (n) => n.startsWith('yandex_')],
 ];
-const kind = (t) => (t.annotations?.readOnlyHint ? 'чтение' : t.annotations?.destructiveHint ? 'удаление' : 'запись');
+const kind = (t) => (t.annotations?.readOnlyHint ? 'чтение' : t.annotations?.destructiveHint ? (t.name.includes('_delete_') ? 'удаление' : 'изменение') : 'запись');
 // первое предложение; если оно совсем короткое («Поиск задач.») — два
 const firstSentence = (s) => {
   const parts = (s ?? '').split(/(?<=[.!?])\s/);

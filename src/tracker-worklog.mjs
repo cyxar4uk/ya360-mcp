@@ -128,7 +128,7 @@ export function registerTrackerWorklog({ server, config, api, enc, ref, key }) {
 
   defineTool(server, 'tracker_update_worklog', {
     title: 'Трекер: исправить списание',
-    kind: 'write',
+    kind: 'update',
     description: 'Изменить длительность и/или комментарий записи учёта времени.',
     input: { key, worklog_id: worklogId, duration: z.string().optional(), comment: z.string().optional() },
   }, async ({ key: k, worklog_id, duration, comment }) => {

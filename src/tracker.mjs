@@ -297,7 +297,7 @@ export function registerTracker(server, config) {
 
   defineTool(server, 'tracker_update_issue', {
     title: 'Трекер: изменить задачу',
-    kind: 'write',
+    kind: 'update',
     description:
       'Изменить поля задачи. fields — как в API: {"summary": "…"}, {"assignee": "login"}, ' +
       '{"tags": {"add": ["x"]}}, {"sprint": [{"id": 12}]}. Статус так не меняется — для него tracker_transition_issue.',

@@ -24,7 +24,7 @@ await client.connect(transport);
 const { tools } = await client.listTools();
 console.log(`Инструментов: ${tools.length}`);
 for (const t of tools) {
-  const kind = t.annotations?.readOnlyHint ? 'чтение' : t.annotations?.destructiveHint ? 'удаление' : 'запись';
+  const kind = t.annotations?.readOnlyHint ? 'чтение' : t.annotations?.destructiveHint ? (t.name.includes('_delete_') ? 'удаление' : 'изменение') : 'запись';
   console.log(`  ${t.name.padEnd(28)} ${kind}`);
 }
 

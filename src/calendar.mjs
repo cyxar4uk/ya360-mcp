@@ -414,7 +414,7 @@ export function registerCalendar(server, config) {
 
   defineTool(server, 'calendar_update_event', {
     title: 'Календарь: изменить событие',
-    kind: 'write',
+    kind: 'update',
     description:
       'Изменить событие по href из calendar_list_events: название, время, место, описание. ' +
       'Если меняется только начало, длительность сохраняется. У повторяющегося события меняется вся серия. ' +

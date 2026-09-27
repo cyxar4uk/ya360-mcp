@@ -477,7 +477,7 @@ export function registerMail(server, config) {
 
   defineTool(server, 'mail_move', {
     title: 'Почта: переложить',
-    kind: 'write',
+    kind: 'update',
     description:
       'Переложить письма в другую папку (archive или путь из mail_list_folders); письма из «Удалённых» можно вернуть этим же инструментом. ' +
       'В «Удалённые» и «Спам» — только если включена группа прав mail.delete: перед этим назови пользователю письма и получи согласие.',
