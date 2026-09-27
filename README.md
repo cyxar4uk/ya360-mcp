@@ -52,6 +52,7 @@ node src/main.mjs setup
 
 Мастер спросит адрес ящика и пароли (ввод скрыт), проверит вход в каждый сервис, предложит права и сам подключит сервер
 к Claude Code и, по желанию, к Claude Desktop. Проверить подключение в любой момент — `node src/main.mjs doctor`.
+На Windows запускайте мастер в PowerShell или Windows Terminal: в Git Bash скрыть ввод пароля нельзя (или `winpty node …`).
 
 ## Где взять доступы
 
@@ -87,7 +88,9 @@ node src/main.mjs setup
 | `full` | всё, включая отправку писем и удаление |
 
 Можно собрать своё из групп: `tracker.read`, `tracker.comment`, `tracker.edit`, `tracker.files`, `tracker.worklog`,
-`mail.read`, `mail.draft`, `mail.organize`, `mail.send`, `calendar.read`, `calendar.write`. Примеры: `read,tracker.comment`,
+`mail.read`, `mail.draft`, `mail.organize` (раскладка по папкам), `mail.delete` (перенос в «Удалённые» и «Спам»), `mail.send`,
+`calendar.read`, `calendar.write`. Аварийный выключатель: переменная `YANDEX_MCP_READONLY=1` оставляет только чтение,
+что бы ни было в настройках. Примеры: `read,tracker.comment`,
 `full,-mail.send`, `read,tracker.*`. Изменить — поле «Права» плагина/расширения или `node src/main.mjs permissions assist`.
 Выключенные инструменты не видны Claude вовсе; какие скрыты — покажет инструмент `yandex_status`.
 
@@ -131,6 +134,8 @@ yandex-mcp migrate [.env]   перенести настройки из преж�
 - Изменение и удаление повторяющегося события действуют на всю серию; новые события пишутся в UTC, ссылку на Телемост сервер не создаёт.
 - Учёт времени считает день за 8 часов, неделю за 5 дней; списания за период ищутся по дате внесения записи.
 - Хранилища секретов macOS и Linux в коде есть, но проверены пока только на Windows.
+- На Windows хранилище работает через PowerShell. Если политика компании включает для PowerShell ограниченный режим
+  (Constrained Language Mode), сохранённые пароли недоступны — задайте их полями плагина/расширения или переменными окружения.
 
 ## Разработка
 
