@@ -36,6 +36,8 @@ cpSync(join(root, 'dist', 'ya360-mcp.mjs'), join(stage, 'server', 'ya360-mcp.mjs
 cpSync(join(root, 'dist', 'THIRD_PARTY_LICENSES.txt'), join(stage, 'THIRD_PARTY_LICENSES.txt'));
 cpSync(join(root, 'README.md'), join(stage, 'README.md'));
 cpSync(join(root, 'README.ru.md'), join(stage, 'README.ru.md'));
+cpSync(join(root, 'LICENSE'), join(stage, 'LICENSE'));
+cpSync(join(root, 'PRIVACY.md'), join(stage, 'PRIVACY.md'));
 // сценарии — сервер отдаёт их как подсказки в Claude Desktop
 cpSync(join(root, 'skills'), join(stage, 'skills'), { recursive: true });
 

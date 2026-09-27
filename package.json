@@ -32,7 +32,8 @@
     "dist",
     "README.md",
     "README.ru.md",
-    "LICENSE"
+    "LICENSE",
+    "PRIVACY.md"
   ],
   "scripts": {
     "start": "node src/main.mjs",
