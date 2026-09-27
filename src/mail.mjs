@@ -48,17 +48,40 @@ export function attachmentText(att) {
   return /html?$/i.test(name) || /html/i.test(att.contentType ?? '') ? htmlToText(text) : text;
 }
 
-// метка говорящего в расшифровке — отдельная строка «Имя Фамилия:» или «Имя Ф. (2):»
-const SPEAKER = /^[^\[\]\d\s][^:\[\]]{0,60}:$/;
+// Метка говорящего в расшифровке Телемоста: отдельной строкой «Имя Фамилия:» / «Имя Ф. (2):»
+// или прямо в строке перед репликой «Имя Фамилия: [00:19:03] …» — и таких в одной строке бывает несколько.
+const SPEAKER_LINE = /^([^\[\]\d\s][^:\[\]]{0,60}):$/;
+// имя в строке — строго: 1–3 слова с заглавной, инициал с точкой, номер подключения — иначе в «имя» попадёт предложение
+const SPEAKER_INLINE = /(?:^|[.!?…]\s+|\s{2,})([А-ЯЁA-Z][а-яёa-z]+(?:\s+[А-ЯЁA-Z][а-яёa-z]*\.?){0,2}(?:\s+\(\d+\))?):\s*\[\d{1,2}:\d{2}/g;
+
+/** Кто говорит в строке i до позиции pos: последняя метка в строке до pos, иначе ближайшая выше. */
+function speakerAt(lines, i, pos = Infinity) {
+  let found;
+  for (const m of lines[i].matchAll(SPEAKER_INLINE)) if (m.index < pos) found = m[1].trim();
+  if (found) return found;
+  for (let j = i - 1; j >= 0 && j >= i - 300; j--) {
+    const t = lines[j].trim();
+    const own = SPEAKER_LINE.exec(t);
+    if (own) return own[1];
+    const inline = [...t.matchAll(SPEAKER_INLINE)].at(-1);
+    if (inline) return inline[1].trim();
+  }
+  return undefined;
+}
 
 /** Фрагменты вокруг строк с любым из слов; к каждому — ближайший говорящий выше. */
 export function findFragments(text, terms, context = 2, maxChars = 20000) {
   const lines = text.split('\n');
   const needles = terms.map((t) => t.toLowerCase().replace(/ё/g, 'е'));
   const hits = [];
+  const speakerOf = new Map(); // строка совпадения → говорящий в месте совпадения
   lines.forEach((l, i) => {
     const low = l.toLowerCase().replace(/ё/g, 'е');
-    if (needles.some((n) => low.includes(n))) hits.push(i);
+    const at = Math.min(...needles.map((n) => low.indexOf(n)).filter((p) => p >= 0));
+    if (Number.isFinite(at)) {
+      hits.push(i);
+      speakerOf.set(i, speakerAt(lines, i, at));
+    }
   });
   // соседние совпадения склеиваем в один фрагмент
   const ranges = [];
@@ -72,17 +95,18 @@ export function findFragments(text, terms, context = 2, maxChars = 20000) {
   const fragments = [];
   let used = 0;
   for (const r of ranges) {
-    let speaker;
-    for (let j = r.from; j >= 0 && j >= r.from - 200; j--) {
-      if (SPEAKER.test(lines[j].trim())) {
-        speaker = lines[j].trim().slice(0, -1);
-        break;
-      }
-    }
+    // говорящий — в месте совпадения; если совпадений в фрагменте несколько и говорят разные люди — все
+    const inRange = hits.filter((i) => i >= r.from && i <= r.to).map((i) => speakerOf.get(i)).filter(Boolean);
+    const speakers = [...new Set(inRange)];
     const chunk = lines.slice(r.from, r.to + 1).join('\n');
     if (used + chunk.length > maxChars) break;
     used += chunk.length;
-    fragments.push({ line: r.from + 1, ...(speaker ? { speaker } : {}), text: chunk });
+    fragments.push({
+      line: r.from + 1,
+      ...(speakers.length ? { speaker: speakers[0] } : {}),
+      ...(speakers.length > 1 ? { speakers } : {}),
+      text: chunk,
+    });
   }
   return {
     lines: lines.length,
