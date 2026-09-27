@@ -139,8 +139,9 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     if (!oauth.tokens?.access_token) throw new Error('вход через Яндекс не выполнен — запусти `ya360-mcp login`');
     const t = oauth.tokens;
     const expiring = t.expires_at && t.expires_at - Date.now() < DAY;
-    // секрет не обязателен: общее приложение продлевает токен по одному client_id
-    if (expiring && t.refresh_token && oauth.clientId) {
+    // Яндекс продлевает токен только с секретом приложения (проверено 27.09.2026: «Wrong client secret»).
+    // Общее приложение секрета не имеет — его токен живёт год, а за 2 недели до конца status() напомнит войти заново.
+    if (expiring && t.refresh_token && oauth.clientId && oauth.clientSecret) {
       refreshing ??= refreshTokens({ clientId: oauth.clientId, clientSecret: oauth.clientSecret, refreshToken: t.refresh_token })
         .then((fresh) => {
           oauth.tokens = fresh;
@@ -265,12 +266,28 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
     return out;
   };
 
+  /** Сколько дней осталось токену Яндекса, если он не продлевается сам; null — продлевается или срока нет. */
+  config.oauthDaysLeft = () => {
+    const at = oauth.tokens?.expires_at;
+    if (!at || oauth.staticToken || (oauth.clientSecret && oauth.tokens?.refresh_token)) return null;
+    return Math.floor((at - Date.now()) / DAY);
+  };
+
   /** Сводка без секретов. */
   config.status = () => {
     const svcStatus = (name, extra) => {
       const m = config.missing(name);
       return { enabled: m.length === 0, missing: m, ...extra };
     };
+    const daysLeft = config.oauthDaysLeft();
+    const reminders = [];
+    if (daysLeft !== null && daysLeft < 14) {
+      reminders.push(
+        daysLeft < 0
+          ? 'токен Яндекса истёк — войдите заново: yandex_login в чате или ya360-mcp login'
+          : `токен Яндекса истекает через ${daysLeft} дн. — войдите заново: yandex_login в чате или ya360-mcp login`,
+      );
+    }
     return {
       source: config.source,
       settingsFile: settings ? settingsFile(home) : null,
@@ -291,8 +308,9 @@ export function loadConfig({ env = process.env, legacyPath = resolve(ROOT, '.env
         app: !oauth.clientId ? null : oauth.clientId === SHARED_CLIENT_ID ? 'общее приложение ya360-mcp' : 'своё приложение',
         loggedIn: oauthReady(),
         expiresAt: oauth.tokens?.expires_at ? new Date(oauth.tokens.expires_at).toISOString() : null,
+        renewsItself: oauthReady() && config.oauthDaysLeft() === null,
       },
-      problems,
+      problems: [...problems, ...reminders],
     };
   };
 
