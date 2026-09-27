@@ -37,7 +37,7 @@
     "start": "node src/main.mjs",
     "setup": "node src/main.mjs setup",
     "doctor": "node src/main.mjs doctor",
-    "test": "node --test test/unit.test.mjs test/config.test.mjs test/oauth.test.mjs",
+    "test": "node --test test/unit.test.mjs test/config.test.mjs test/oauth.test.mjs test/tools.test.mjs",
     "smoke": "node test/smoke.mjs",
     "build": "node scripts/build.mjs",
     "check:dist": "node scripts/build.mjs --check",
