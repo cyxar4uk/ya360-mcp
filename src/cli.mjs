@@ -5,14 +5,16 @@
 
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { unlinkSync } from 'node:fs';
+import { unlinkSync, existsSync } from 'node:fs';
 import { ROOT, SECRETS, homeDir, readSettings, writeSettings, settingsFile, loadConfig, loadEnvFile } from './config.mjs';
 import { secretStore } from './secrets.mjs';
 import { deviceLogin, SCOPES } from './oauth.mjs';
 import { checkAll, CHECKS, LABELS } from './checks.mjs';
 import { GROUPS, PRESETS, parsePermissions } from './permissions.mjs';
 import { ask, askSecret, confirm, choose, say } from './prompt.mjs';
-import { hasClaudeCode, registerClaudeCode, registerClaudeDesktop, launchCommand } from './register.mjs';
+import {
+  hasClaudeCode, registerClaudeCode, registerClaudeDesktop, launchCommand, registrationBlocker, claudeCodeCurrent, sameLaunch, desktopHasServer,
+} from './register.mjs';
 
 const SERVICES = ['tracker', 'mail', 'calendar'];
 const ACCUSATIVE = { tracker: 'Трекер', mail: 'Почту', calendar: 'Календарь' };
@@ -29,7 +31,8 @@ function isZone(tz) {
 }
 
 function openUrl(url) {
-  if (!/^https:\/\/[\w.-]+\.(ru|com)\//.test(url)) return;
+  // только простой адрес Яндекса: `cmd /c start` понял бы & и | в ссылке как отдельные команды
+  if (!/^https:\/\/([a-z0-9-]+\.)*(ya|yandex)\.(ru|com)(\/[a-z0-9/._~-]*)?$/i.test(url)) return;
   const [cmd, args] =
     process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
   try {
@@ -48,8 +51,13 @@ async function askUntil(question, fallback, valid, hint) {
 }
 
 /** Состояние мастера: настройки в памяти, сохранённые и новые секреты, проверка до записи на диск. */
-function session() {
+function session({ allowLegacy = false } = {}) {
   const home = homeDir();
+  const legacyEnv = resolve(ROOT, '.env');
+  if (!allowLegacy && !readSettings(home) && existsSync(legacyEnv)) {
+    // как только появится config.json, прежний .env перестанет читаться — и настройки из него пропадут
+    throw new Error(`найден прежний ${legacyEnv} — сначала перенесите настройки: yandex-mcp migrate`);
+  }
   const store = secretStore(home);
   const settings = structuredClone(readSettings(home) ?? {});
   settings.account ||= 'default';
@@ -207,19 +215,47 @@ async function setupPermissions(ss) {
   }
 }
 
+const attempt = (fn) => {
+  try {
+    say(`  ${fn()}`);
+  } catch (err) {
+    say(`  ✗ ${err.message}`);
+  }
+};
+
+/** Claude Code: не трогаем чужую запись без спроса, свою такую же не переписываем. */
+async function offerClaudeCode(launch, { ask: askFirst = true } = {}) {
+  if (!hasClaudeCode()) {
+    say('Claude Code не найден (команды claude нет в PATH) — подключить позже: yandex-mcp register');
+    return;
+  }
+  const current = claudeCodeCurrent();
+  if (sameLaunch(current, launch)) {
+    say('Claude Code: сервер уже подключён так же — ничего не меняю');
+    return;
+  }
+  if (current) {
+    say(`В Claude Code уже есть сервер «yandex»: ${current}`);
+    if (!(await confirm('Заменить его этим?', false))) return;
+  } else if (askFirst && !(await confirm('Подключить сервер к Claude Code (для всех проектов)?', true))) return;
+  attempt(() => registerClaudeCode(launch));
+}
+
+async function offerClaudeDesktop(launch) {
+  if (!(await confirm('Подключить к Claude Desktop (вкладка Chat)?', false))) return;
+  if (desktopHasServer() && !(await confirm('В Claude Desktop уже есть сервер «yandex» — заменить?', false))) return;
+  attempt(() => registerClaudeDesktop(launch));
+}
+
 async function offerRegister() {
   const launch = launchCommand();
-  const run = (fn) => {
-    try {
-      say(`  ${fn()}`);
-    } catch (err) {
-      say(`  ✗ ${err.message}`);
-    }
-  };
-  if (hasClaudeCode()) {
-    if (await confirm('Подключить сервер к Claude Code (для всех проектов)?', true)) run(() => registerClaudeCode(launch));
-  } else say('Claude Code не найден — подключить позже: yandex-mcp register');
-  if (await confirm('Подключить к Claude Desktop (вкладка Chat)?', false)) run(() => registerClaudeDesktop(launch));
+  const blocker = registrationBlocker(launch);
+  if (blocker) {
+    say(`Подключение к Claude пропускаю: ${blocker}.`);
+    return;
+  }
+  await offerClaudeCode(launch);
+  await offerClaudeDesktop(launch);
 }
 
 // ───────────────────────────────────────────── команды
@@ -247,13 +283,23 @@ async function setup() {
       { value: 'app-password', label: 'пароли приложений — проще, ничего регистрировать не нужно' },
       { value: 'oauth', label: 'вход через Яндекс (OAuth) — один вход на все сервисы, нужно своё OAuth-приложение' },
     ], mailCal.some((s) => st[s].auth === 'oauth') ? 1 : 0);
-    if (method === 'oauth') {
-      await oauthLogin(ss, services);
-      oauthDone = true;
-      for (const s of mailCal) await verify(ss, s);
-    } else {
-      for (const s of mailCal) await setupAppPassword(ss, s);
+    // ошибка входа (неверный секрет, истёк код) не должна выбрасывать уже введённые ответы
+    let useOauth = method === 'oauth';
+    while (useOauth && !oauthDone) {
+      try {
+        await oauthLogin(ss, services);
+        oauthDone = true;
+      } catch (err) {
+        say(`  ✗ ${err.message}`);
+        const next = await choose('Что дальше?', [
+          { value: 'retry', label: 'попробовать вход через Яндекс ещё раз' },
+          { value: 'passwords', label: 'перейти на пароли приложений' },
+        ]);
+        if (next === 'passwords') useOauth = false;
+      }
     }
+    if (oauthDone) for (const s of mailCal) await verify(ss, s);
+    else for (const s of mailCal) await setupAppPassword(ss, s);
   }
   if (st.mail?.enabled) st.mail.fromName = (await ask('Имя отправителя в письмах, необязательно', st.mail.fromName || '')) || undefined;
   if (st.tracker?.enabled) await setupTracker(ss, oauthDone);
@@ -325,9 +371,15 @@ async function migrate(file = resolve(ROOT, '.env')) {
     say(`Нет файла ${resolve(file)}`);
     return 1;
   }
-  const L = (k) => String(legacy[k] ?? '').trim();
-  const ss = session();
+  const used = new Set();
+  const L = (k) => {
+    used.add(k);
+    return String(legacy[k] ?? '').trim();
+  };
+  const ss = session({ allowLegacy: true });
   const st = ss.settings;
+  if (L('YANDEX_MCP_ACCOUNT')) st.account = L('YANDEX_MCP_ACCOUNT');
+  if (L('YANDEX_MCP_DOWNLOAD_DIR')) st.downloadDir = L('YANDEX_MCP_DOWNLOAD_DIR');
   if (L('YANDEX_LOGIN')) st.login = L('YANDEX_LOGIN');
   if (L('YANDEX_TZ')) st.timezone = L('YANDEX_TZ');
   st.permissions = L('YANDEX_MCP_PERMISSIONS') || (/^(1|true|yes|да)$/i.test(L('YANDEX_MCP_READONLY')) ? 'read' : st.permissions || 'full');
@@ -356,7 +408,12 @@ async function migrate(file = resolve(ROOT, '.env')) {
   say(`Секреты перенесены в ${ss.store.name}: ${moved.join(', ') || 'нет'}`);
   if (st.tracker.envFile) say(`Токен Трекера по-прежнему читается из ${st.tracker.envFile}`);
   say(`${resolve(file)} больше не читается — теперь главный config.json.`);
-  if (moved.length && (await confirm(`Удалить ${resolve(file)}? Пароли из него теперь в ${ss.store.name}`, true))) {
+  // что в config.json не переносится (адреса серверов, готовый OAuth-токен…) — пусть человек решит сам
+  const left = Object.keys(legacy).filter((k) => legacy[k] && !used.has(k));
+  if (left.length) {
+    say(`Не перенесено (в config.json для этого нет места — задайте переменными окружения, если нужны): ${left.join(', ')}`);
+  }
+  if (moved.length && (await confirm(`Удалить ${resolve(file)}? Пароли из него теперь в ${ss.store.name}`, !left.length))) {
     unlinkSync(resolve(file));
     say('Удалён.');
   }
@@ -388,14 +445,14 @@ async function permissions(spec) {
 
 async function register(target) {
   const launch = launchCommand();
+  const blocker = registrationBlocker(launch);
+  if (blocker) {
+    say(`Не подключаю: ${blocker}.`);
+    return 1;
+  }
   say(`Запуск сервера: ${launch.command} ${launch.args.join(' ')}`);
-  if (!target || target === 'code') {
-    if (!hasClaudeCode()) say('Claude Code не найден (команды claude нет в PATH).');
-    else say(registerClaudeCode(launch));
-  }
-  if (target === 'desktop' || (!target && (await confirm('Подключить и к Claude Desktop (вкладка Chat)?', false)))) {
-    say(registerClaudeDesktop(launch));
-  }
+  if (!target || target === 'code') await offerClaudeCode(launch, { ask: false });
+  if (!target || target === 'desktop') await offerClaudeDesktop(launch);
   return 0;
 }
 

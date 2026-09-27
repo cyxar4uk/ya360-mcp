@@ -45,7 +45,11 @@ export async function ask(question, fallback = '') {
 export function askSecret(question, { keepHint = false } = {}) {
   const suffix = keepHint ? ' (Enter — оставить сохранённый)' : '';
   if (!interactive() || typeof process.stdin.setRawMode !== 'function') {
-    // из потока ничего не отображаем — значение не попадёт в журнал консоли
+    // Git Bash (mintty) не даёт node консоль: скрыть ввод нельзя, терминал сам покажет символы — предупреждаем
+    if (process.env.MSYSTEM || process.stdout.isTTY) {
+      out.write('  (эта консоль не умеет скрывать ввод — символы будут видны; для скрытого ввода запустите в PowerShell или через winpty)\n');
+    }
+    // сами мы значение не выводим — в журнал консоли оно не попадёт
     out.write(`${question}${suffix}: `);
     return nextLine().then((v) => {
       out.write('(принято)\n');
