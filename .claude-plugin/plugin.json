@@ -35,7 +35,8 @@
         "YANDEX_TRACKER_ORG_ID": "${user_config.tracker_org_id}",
         "YANDEX_TRACKER_CLOUD_ORG_ID": "${user_config.tracker_cloud_org_id}",
         "YANDEX_TRACKER_QUEUE": "${user_config.tracker_queue}",
-        "YANDEX_TRACKER_BOARD": "${user_config.tracker_board}"
+        "YANDEX_TRACKER_BOARD": "${user_config.tracker_board}",
+        "YA360_PROMPTS": "off"
       }
     }
   },
