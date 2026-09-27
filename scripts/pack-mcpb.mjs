@@ -35,6 +35,7 @@ writeFileSync(join(stage, 'manifest.json'), `${JSON.stringify(manifest, null, 2)
 cpSync(join(root, 'dist', 'ya360-mcp.mjs'), join(stage, 'server', 'ya360-mcp.mjs'));
 cpSync(join(root, 'dist', 'THIRD_PARTY_LICENSES.txt'), join(stage, 'THIRD_PARTY_LICENSES.txt'));
 cpSync(join(root, 'README.md'), join(stage, 'README.md'));
+cpSync(join(root, 'README.en.md'), join(stage, 'README.en.md'));
 // сценарии — сервер отдаёт их как подсказки в Claude Desktop
 cpSync(join(root, 'skills'), join(stage, 'skills'), { recursive: true });
 

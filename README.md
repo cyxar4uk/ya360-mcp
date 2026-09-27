@@ -4,10 +4,12 @@
 [![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-blue.svg)](LICENSE)
 ![Node.js 20+](https://img.shields.io/badge/node-%E2%89%A520-green.svg)
 
+[English](README.en.md) · **Русский**
+
 Неофициальный MCP-сервер: Claude работает с **Яндекс Трекером**, **Почтой** и **Календарём** от вашего имени.
 Проект не связан с ООО «Яндекс» и не одобрен им.
 
-*Unofficial MCP server that lets Claude work with Yandex Tracker, Mail and Calendar (Yandex 360). Russian-first.*
+*Unofficial MCP server that lets Claude work with Yandex Tracker, Mail and Calendar (Yandex 360) — [English README](README.en.md).*
 
 **Документация — [вики](https://github.com/cyxar4uk/ya360-mcp/wiki):** установка, подключение, сценарии с примерами, частые вопросы.
 
@@ -147,6 +149,7 @@ ya360-mcp login | logout   войти через Яндекс / удалить �
 ya360-mcp permissions [..] показать или изменить права
 ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
 ya360-mcp migrate [.env]   перенести настройки из прежнего .env
+ya360-mcp skills install   сценарии как личные навыки Claude Code — /standup без префикса
 ```
 
 Из папки проекта — `node src/main.mjs <команда>`; из плагина — `node <папка плагина>/dist/ya360-mcp.mjs <команда>`.
@@ -168,6 +171,8 @@ npm run smoke       # поднять сервер как клиент MCP; SMOKE
 npm run build       # dist/ya360-mcp.mjs + лицензии зависимостей (коммитится: его запускает плагин)
 npm run check:dist  # dist совпадает с исходниками
 npm run pack:mcpb   # release/ya360-<версия>.mcpb для Claude Desktop
+npm run wiki:tools  # страница вики «Инструменты» из сервера
+npm run wiki:sync   # выложить docs/wiki в вики GitHub
 ```
 
 ```
