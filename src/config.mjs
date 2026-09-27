@@ -31,6 +31,8 @@ export function loadEnvFile(path) {
     const key = line.slice(0, eq).trim();
     let val = line.slice(eq + 1).trim();
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    // комментарий в конце строки: «KEY=value   # пояснение» и «KEY=   # пояснение»; «pa#ss» остаётся значением
+    else val = val.replace(/(^|\s+)#.*$/, '');
     out[key] = val;
   }
   return out;
