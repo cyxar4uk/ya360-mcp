@@ -15,6 +15,7 @@ import { registerTracker } from './tracker.mjs';
 import { registerMail } from './mail.mjs';
 import { registerCalendar } from './calendar.mjs';
 import { registerLoginTool } from './login-tool.mjs';
+import { registerPrompts } from './scenarios.mjs';
 
 const SERVICES = [
   ['tracker', 'Трекер', registerTracker],
@@ -79,12 +80,15 @@ defineTool(gated, 'yandex_status', {
 
 registerLoginTool(gated, { activate: () => activate(), legacyEnvPath: resolve(ROOT, '.env') });
 
+// сценарии как подсказки — для Claude Desktop и других клиентов; в плагине Claude Code навыки есть и так
+const prompts = /^(0|off|false|нет)$/i.test(process.env.YA360_PROMPTS ?? '') ? 0 : registerPrompts(server);
+
 const { added } = activate(config);
 for (const [key, label] of SERVICES) {
   const gaps = config.missing(key);
   if (gaps.length) console.error(`ya360-mcp: ${label} выключен — не задано: ${gaps.join('; ')}`);
 }
 for (const p of config.status().problems) console.error(`ya360-mcp: ${p}`);
-console.error(`ya360-mcp: подключено — ${added.join(', ') || 'ничего'}; права: ${[...config.permissions].join(', ')}`);
+console.error(`ya360-mcp: подключено — ${added.join(', ') || 'ничего'}; права: ${[...config.permissions].join(', ')}; сценариев-подсказок: ${prompts}`);
 
 await server.connect(new StdioServerTransport());

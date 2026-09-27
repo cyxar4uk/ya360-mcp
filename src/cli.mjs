@@ -3,8 +3,10 @@
  * права, подключение к Claude. Значения секретов не печатает никогда.
  */
 
-import { resolve } from 'node:path';
-import { unlinkSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { homedir } from 'node:os';
+import { unlinkSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { loadSkills, unplug, SKILLS_DIR } from './scenarios.mjs';
 import { ROOT, SECRETS, homeDir, readSettings, writeSettings, settingsFile, loadConfig, loadEnvFile } from './config.mjs';
 import { secretStore } from './secrets.mjs';
 import { deviceLogin, SCOPES, browserLogin, scopesFor, yandexProfile, SHARED_CLIENT_ID } from './oauth.mjs';
@@ -490,6 +492,53 @@ async function register(target) {
   return 0;
 }
 
+const SKILL_MARK = '.ya360-mcp';
+
+/**
+ * Сценарии как личные навыки Claude Code: ~/.claude/skills/<имя> — вызываются без префикса плагина (/standup).
+ * Свои папки помечаем файлом-меткой: чужие навыки с теми же именами не трогаем и не удаляем.
+ */
+async function skillsCommand(action = 'install', dir) {
+  const dest = dir ? resolve(dir) : join(homedir(), '.claude', 'skills');
+  const list = loadSkills();
+  if (!list.length) {
+    say(`Нет сценариев в ${SKILLS_DIR}`);
+    return 1;
+  }
+  if (action === 'list') {
+    for (const s of list) say(`  /${s.name.padEnd(18)} ${s.title}`);
+    return 0;
+  }
+  if (action === 'remove') {
+    const removed = list.filter((s) => existsSync(join(dest, s.name, SKILL_MARK)));
+    for (const s of removed) rmSync(join(dest, s.name), { recursive: true, force: true });
+    say(`Удалено из ${dest}: ${removed.map((s) => '/' + s.name).join(', ') || 'нечего'}`);
+    return 0;
+  }
+  if (action !== 'install') {
+    say('Команды: ya360-mcp skills install [папка] | remove [папка] | list');
+    return 2;
+  }
+  const done = [];
+  const skipped = [];
+  for (const s of list) {
+    const target = join(dest, s.name);
+    if (existsSync(target) && !existsSync(join(target, SKILL_MARK))) {
+      skipped.push(s.name);
+      continue;
+    }
+    mkdirSync(target, { recursive: true });
+    writeFileSync(join(target, 'SKILL.md'), unplug(s.raw, 'command'));
+    writeFileSync(join(target, SKILL_MARK), 'Установлено командой ya360-mcp skills install; удалить — ya360-mcp skills remove\n');
+    done.push(s.name);
+  }
+  say(`Установлены в ${dest}: ${done.map((n) => '/' + n).join(', ')}`);
+  if (skipped.length) say(`Пропущены — у вас уже есть свои навыки с такими именами: ${skipped.join(', ')}`);
+  say('Если стоит и плагин ya360 — сценарии будут в двух видах (/standup и /ya360:standup): оставьте что-то одно.');
+  say('Действуют с новой сессии Claude Code.');
+  return 0;
+}
+
 function help() {
   say(`ya360-mcp — неофициальный MCP-сервер для Яндекс Трекера, Почты и Календаря
 
@@ -501,6 +550,7 @@ function help() {
   ya360-mcp permissions [..] показать или изменить права (read, assist, full, группы)
   ya360-mcp register [code|desktop]  подключить к Claude Code / Claude Desktop
   ya360-mcp migrate [.env]   перенести настройки из прежнего .env
+  ya360-mcp skills install   сценарии как личные навыки Claude Code — /standup вместо /ya360:standup
 
 Настройки: ${settingsFile(homeDir())}`);
   return 0;
@@ -515,6 +565,7 @@ export async function runCli([command, ...rest]) {
     migrate: () => migrate(rest[0]),
     permissions: () => permissions(rest[0]),
     register: () => register(rest[0]),
+    skills: () => skillsCommand(rest[0], rest[1]),
     help,
     '--help': help,
     '-h': help,
