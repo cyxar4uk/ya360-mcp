@@ -23,27 +23,26 @@ function run(cmd, args, input) {
 
 // ───────────────────────────────────────────── Windows: DPAPI
 
-const PS_DPAPI = (method) => `
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Security
-$raw = [Console]::In.ReadToEnd().Trim()
-$items = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($raw)) | ConvertFrom-Json
-$entropy = [Text.Encoding]::UTF8.GetBytes('${SERVICE}')
-$out = New-Object System.Collections.ArrayList
-foreach ($s in @($items)) {
-  $bytes = [Convert]::FromBase64String([string]$s)
-  $res = [Security.Cryptography.ProtectedData]::${method}($bytes, $entropy, [Security.Cryptography.DataProtectionScope]::CurrentUser)
-  [void]$out.Add([Convert]::ToBase64String($res))
-}
-[Console]::Out.Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -InputObject @($out) -Compress))))
-`;
+/**
+ * Сценарий одной строкой (так его надёжно исполняет `-Command -`), данные — base64 внутри него.
+ * Весь текст идёт через stdin: без -EncodedCommand и -ExecutionPolicy, на которые реагируют корпоративные антивирусы.
+ */
+const PS_DPAPI = (method, payload) =>
+  [
+    "$ErrorActionPreference = 'Stop'",
+    'Add-Type -AssemblyName System.Security',
+    `$items = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${payload}')) | ConvertFrom-Json`,
+    `$entropy = [Text.Encoding]::UTF8.GetBytes('${SERVICE}')`,
+    '$out = New-Object System.Collections.ArrayList',
+    `foreach ($s in @($items)) { $bytes = [Convert]::FromBase64String([string]$s); $res = [Security.Cryptography.ProtectedData]::${method}($bytes, $entropy, [Security.Cryptography.DataProtectionScope]::CurrentUser); [void]$out.Add([Convert]::ToBase64String($res)) }`,
+    '[Console]::Out.Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -InputObject @($out) -Compress))))',
+  ].join('; ');
 
 /** Один вызов PowerShell на пачку значений: base64 на входе и выходе, чтобы не зависеть от кодировки консоли. */
 function dpapi(method, values) {
   if (!values.length) return [];
-  const script = Buffer.from(PS_DPAPI(method), 'utf16le').toString('base64');
-  const input = Buffer.from(JSON.stringify(values)).toString('base64');
-  const res = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', script], input);
+  const payload = Buffer.from(JSON.stringify(values)).toString('base64');
+  const res = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], `${PS_DPAPI(method, payload)}\n`);
   if (res.status !== 0) throw new Error(`DPAPI (${method}) не сработал: ${(res.stderr || '').trim().split('\n')[0]}`);
   const out = JSON.parse(Buffer.from(res.stdout.trim(), 'base64').toString('utf8'));
   return Array.isArray(out) ? out : [out];
@@ -83,6 +82,11 @@ function windowsStore(dir) {
 
 const quote = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
+// В Связке ключей и Secret Service значение лежит как «b64:…»: JSON с токенами и любые символы
+// не зависят от правил кавычек `security -i` и от переводов строк в выводе.
+const pack = (value) => `b64:${Buffer.from(value, 'utf8').toString('base64')}`;
+const unpack = (stored) => (stored.startsWith('b64:') ? Buffer.from(stored.slice(4), 'base64').toString('utf8') : stored);
+
 function macStore() {
   return {
     name: 'Связка ключей macOS',
@@ -90,13 +94,13 @@ function macStore() {
       const out = {};
       for (const k of keys) {
         const res = run('security', ['find-generic-password', '-s', SERVICE, '-a', k, '-w']);
-        if (res.status === 0) out[k] = res.stdout.replace(/\n$/, '');
+        if (res.status === 0) out[k] = unpack(res.stdout.replace(/\n$/, ''));
       }
       return out;
     },
     write(key, value) {
       // `security -i` читает команду из stdin — пароль не виден в списке процессов
-      const res = run('security', ['-i'], `add-generic-password -U -s ${quote(SERVICE)} -a ${quote(key)} -w ${quote(value)}\n`);
+      const res = run('security', ['-i'], `add-generic-password -U -s ${quote(SERVICE)} -a ${quote(key)} -w ${quote(pack(value))}\n`);
       if (res.status !== 0) throw new Error(`Связка ключей: ${(res.stderr || '').trim()}`);
     },
     remove(key) {
@@ -114,12 +118,12 @@ function linuxStore() {
       const out = {};
       for (const k of keys) {
         const res = run('secret-tool', ['lookup', 'service', SERVICE, 'key', k]);
-        if (res.status === 0 && res.stdout) out[k] = res.stdout.replace(/\n$/, '');
+        if (res.status === 0 && res.stdout) out[k] = unpack(res.stdout.replace(/\n$/, ''));
       }
       return out;
     },
     write(key, value) {
-      const res = run('secret-tool', ['store', '--label', `${SERVICE}: ${key}`, 'service', SERVICE, 'key', key], value);
+      const res = run('secret-tool', ['store', '--label', `${SERVICE}: ${key}`, 'service', SERVICE, 'key', key], pack(value));
       if (res.status !== 0) throw new Error(`secret-tool: ${(res.stderr || '').trim() || 'не удалось сохранить'} — нужен запущенный Secret Service (GNOME Keyring, KWallet)`);
     },
     remove(key) {
