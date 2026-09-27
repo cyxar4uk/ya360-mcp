@@ -1,0 +1,49 @@
+name: Проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Тесты без сети
+        run: npm test
+      - name: dist совпадает с исходниками
+        if: matrix.node == 22
+        run: npm run check:dist
+      - name: Сервер поднимается из сборки
+        if: matrix.node == 22
+        shell: bash
+        run: SMOKE_ENTRY=dist/ya360-mcp.mjs node test/smoke.mjs | grep -q '^Инструментов:'
+
+  manifests:
+    name: Манифесты плагина и расширения
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx mcpb validate packaging/mcpb/manifest.json
+      - name: JSON плагина и витрины читается
+        run: node -e "for (const f of ['.claude-plugin/plugin.json','.claude-plugin/marketplace.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
