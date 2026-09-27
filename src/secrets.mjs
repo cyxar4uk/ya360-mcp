@@ -130,7 +130,12 @@ function linuxStore() {
 
 /** Хранилище для текущей ОС. dir — папка настроек (нужна только Windows). */
 export function secretStore(dir, platform = process.platform) {
-  if (platform === 'win32') return windowsStore(dir);
-  if (platform === 'darwin') return macStore();
-  return linuxStore();
+  const store = platform === 'win32' ? windowsStore(dir) : platform === 'darwin' ? macStore() : linuxStore();
+  const write = store.write;
+  // перевод строки в значении в `security -i` стал бы отдельной командой — такие значения не принимаем нигде
+  store.write = (key, value) => {
+    if (/[\r\n]/.test(key) || /[\r\n]/.test(String(value))) throw new Error('в секрете не может быть перевода строки');
+    return write.call(store, key, String(value));
+  };
+  return store;
 }
