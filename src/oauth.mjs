@@ -30,15 +30,17 @@ export const LOOPBACK_PORT = 51734;
 export const LOOPBACK_REDIRECT = `http://127.0.0.1:${LOOPBACK_PORT}/callback`;
 export const MANUAL_REDIRECT = 'https://oauth.yandex.ru/verification_code';
 
-/** Права по сервисам. login:email — чтобы мастер сам узнал адрес ящика. */
+/**
+ * Права по сервисам — ровно пять: больше пяти прав на приложение Яндекс сейчас не даёт добавить.
+ * Адрес почты узнаём без прав login:* — из логина (см. yandexProfile).
+ */
 export const SCOPES = {
   tracker: ['tracker:read', 'tracker:write'],
   mail: ['mail:imap_full', 'mail:smtp'],
   calendar: ['calendar:all'],
-  profile: ['login:email', 'login:info'],
 };
 
-export const scopesFor = (services) => [...new Set([...services.flatMap((s) => SCOPES[s] ?? []), ...SCOPES.profile])];
+export const scopesFor = (services) => [...new Set(services.flatMap((s) => SCOPES[s] ?? []))];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -188,13 +190,18 @@ export async function browserLogin({ clientId, scopes, loginHint, say, openUrl, 
   return exchangeCode({ clientId, code, verifier });
 }
 
-/** Адрес ящика и имя из Яндекс ID (право login:email / login:info). null — если прав нет. */
+/**
+ * Адрес ящика из Яндекс ID. Без прав login:* Яндекс отдаёт только логин: у аккаунтов организаций (Яндекс 360)
+ * это и есть адрес, у личных — адрес логин@yandex.ru. С правом login:email — адрес по умолчанию из профиля.
+ */
 export async function yandexProfile(accessToken) {
   const res = await fetch('https://login.yandex.ru/info?format=json', { headers: { Authorization: `OAuth ${accessToken}` } });
   if (!res.ok) return null;
   const d = await res.json().catch(() => null);
   if (!d) return null;
-  return { email: d.default_email || null, login: d.login || null, name: d.real_name || d.display_name || null };
+  const login = d.login || null;
+  const email = d.default_email || (login ? (login.includes('@') ? login : `${login}@yandex.ru`) : null);
+  return { email, login, name: d.real_name || d.display_name || null };
 }
 
 // ───────────────────────────────────────────── своё приложение: код подтверждения (device flow)

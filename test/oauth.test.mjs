@@ -35,7 +35,8 @@ test('ссылка авторизации: код, PKCE S256, state, права'
 });
 
 test('права запрашиваются только для выбранных сервисов', () => {
-  assert.deepEqual(scopesFor(['tracker']), ['tracker:read', 'tracker:write', 'login:email', 'login:info']);
+  assert.deepEqual(scopesFor(['tracker']), ['tracker:read', 'tracker:write']);
+  assert.equal(scopesFor(['tracker', 'mail', 'calendar']).length, 5, 'не больше пяти прав — лимит приложения Яндекса');
   assert.ok(scopesFor(['mail', 'calendar']).includes('mail:smtp'));
   assert.ok(!scopesFor(['mail']).includes('tracker:write'));
 });
