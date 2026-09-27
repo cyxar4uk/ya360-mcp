@@ -1,0 +1,27 @@
+{
+  "name": "yandex-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP-сервер для Яндекс Трекера, Почты и Календаря",
+  "type": "module",
+  "bin": {
+    "yandex-mcp": "src/index.mjs"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test test/unit.mjs",
+    "smoke": "node test/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "ical.js": "^2.2.1",
+    "imapflow": "^2.0.7",
+    "mailparser": "^3.9.28",
+    "nodemailer": "^10.0.10",
+    "tsdav": "^2.3.4",
+    "zod": "^4.6.5"
+  }
+}
