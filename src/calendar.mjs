@@ -19,6 +19,11 @@ function isIanaZone(name) {
   }
 }
 
+const MEETING = /https?:\/\/[^\s"'<>)]*(telemost\.yandex\.ru|telemost\.360\.yandex\.ru|zoom\.us|meet\.google\.com|teams\.microsoft\.com|jazz\.sber\.ru|ktalk\.ru)[^\s"'<>)]*/i;
+
+/** Первая ссылка на видеовстречу в тексте (Телемост, Zoom, Meet, Teams, Jazz, Контур.Толк). */
+export const meetingLink = (text) => MEETING.exec(String(text ?? ''))?.[0]?.replace(/[.,;]+$/, '') || undefined;
+
 /** Разбор и сборка iCalendar без сети — отдельно, чтобы проверять тестами. */
 export function icalHelpers(tz) {
   function parse(data) {
@@ -61,6 +66,8 @@ export function icalHelpers(tz) {
       recurring,
       location: val('location') || undefined,
       link: val('url') || undefined,
+      // ссылка на видеовстречу — по ней конспект Телемоста связывается с событием
+      meetingLink: meetingLink([val('url'), val('location'), description].filter(Boolean).join(' ')),
       description: description ? truncate(String(description), 1000).text : undefined,
       organizer: organizer ? { email: email(organizer), name: organizer.getParameter('cn') || undefined } : undefined,
       attendees: attendees.length ? attendees : undefined,
