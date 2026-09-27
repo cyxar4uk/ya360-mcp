@@ -23,7 +23,7 @@ test('поиск людей: логин и почта точно, имя по н
   assert.equal(matchUser(u, 'A.Sidorov@Company.ru'), 100);
   assert.equal(matchUser(u, 'a.sidorov@gmail.com'), 70);
   assert.equal(matchUser(u, 'Андрей Сидоров'), 60);
-  assert.equal(matchUser(u, 'Андрей Б.'), 60);
+  assert.equal(matchUser(u, 'Андрей С.'), 60);
   assert.equal(matchUser(u, 'Сидоров'), 50);
   assert.equal(matchUser(u, 'Андрей Смирнов'), 0);
   assert.equal(matchUser({ ...u, display: 'Пётр Иванов' }, 'петр иванов'), 60, 'ё и е не различаются');
