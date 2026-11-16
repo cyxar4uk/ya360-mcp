@@ -34,14 +34,27 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
     start: s.startDate,
     end: s.endDate,
   });
+  // одноимённые спринты бывают на разных досках — в выборе нужны id, доска и даты
+  const sprintLine = (s) =>
+    `${s.id} «${s.name}» (доска ${s.board?.display ?? '?'}, id ${s.board?.id ?? '?'}; ${STATUS[s.status] ?? s.status}; ${s.startDate ?? '?'} — ${s.endDate ?? '?'})`;
 
-  /** Выбор по имени: точное совпадение → начало имени → подстрока. */
-  function pick(list, want, nameOf, what) {
+  /** id досок задачи — среди одноимённых спринтов выбираем спринт с этих досок. */
+  const issueBoards = async (k) => ((await api('GET', `/issues/${enc(k)}`)).boards ?? []).map((b) => String(b.id ?? b));
+
+  /**
+   * Выбор по имени: точное совпадение → начало имени → подстрока.
+   * narrow сужает несколько совпадений (спринты с досок задачи), describe — как показать кандидатов.
+   */
+  function pick(list, want, nameOf, what, { narrow, describe = nameOf } = {}) {
     const w = want.toLowerCase();
     for (const test of [(n) => n === w, (n) => n.startsWith(w), (n) => n.includes(w)]) {
-      const hits = list.filter((x) => test(nameOf(x).toLowerCase()));
+      let hits = list.filter((x) => test(nameOf(x).toLowerCase()));
+      if (hits.length > 1 && narrow) {
+        const narrowed = narrow(hits);
+        if (narrowed.length) hits = narrowed;
+      }
       if (hits.length === 1) return hits[0];
-      if (hits.length > 1) throw new Error(`«${want}» подходит к нескольким (${what}): ${hits.map(nameOf).join('; ')} — уточни`);
+      if (hits.length > 1) throw new Error(`«${want}» подходит к нескольким (${what}): ${hits.map(describe).join('; ')} — уточни`);
     }
     return null;
   }
@@ -53,21 +66,42 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
     return hit;
   }
 
-  /** sprint — id, имя или его начало («S1»); без sprint — идущий спринт. board сужает поиск. */
-  async function resolveSprint(sprint, board = config.tracker.defaultBoard || undefined) {
+  /**
+   * sprint — id, имя или его начало («S1»); без sprint — идущий спринт. board сужает поиск.
+   * prefer — id досок задачи: если имя подходит к спринтам нескольких досок, берётся спринт с этих досок.
+   */
+  async function resolveSprint(sprint, board = config.tracker.defaultBoard || undefined, prefer = []) {
     if (sprint !== undefined && /^\d+$/.test(String(sprint))) return api('GET', `/sprints/${enc(sprint)}`);
     const where = board ? [await resolveBoard(board)] : await boards();
     const all = (await Promise.all(where.map((b) => sprintsOf(b.id)))).flatMap((list) => list ?? []);
     if (board && !all.length) throw new Error(`у доски «${where[0].name}» нет спринтов`);
+    const narrow = (list) => list.filter((s) => prefer.includes(String(s.board?.id)));
     if (sprint === undefined) {
-      const active = all.filter((s) => s.status === 'in_progress');
+      let active = all.filter((s) => s.status === 'in_progress');
+      if (active.length > 1 && narrow(active).length) active = narrow(active);
       if (active.length === 1) return active[0];
       if (!active.length) throw new Error('идущего спринта нет — укажи sprint');
-      throw new Error(`идут несколько спринтов: ${active.map((s) => `${s.name} (${s.board?.display})`).join('; ')} — укажи sprint или board`);
+      throw new Error(`идут несколько спринтов: ${active.map(sprintLine).join('; ')} — укажи sprint (id) или board`);
     }
-    const hit = pick(all, String(sprint), (s) => s.name, 'спринты');
+    const hit = pick(all, String(sprint), (s) => s.name, 'спринты', { narrow, describe: sprintLine });
     if (!hit) throw new Error(`нет спринта «${sprint}»${board ? ` на доске «${board}»` : ''}`);
     return hit;
+  }
+
+  /**
+   * Поле sprint из fields задачи: id, имя или [{id: …}] → [{id: "71"}]; имя ищется как в tracker_set_sprint.
+   * prefer() — id досок, чьи спринты предпочесть. Другие формы ({add: …}, null) уходят как есть.
+   */
+  async function sprintField(value, prefer = async () => []) {
+    const items = Array.isArray(value) ? value : [value];
+    if (items.some((x) => x === null || (typeof x === 'object' && !('id' in x)))) return value;
+    let boardIds;
+    return Promise.all(items.map(async (x) => {
+      const want = typeof x === 'object' ? x.id : x;
+      if (/^\d+$/.test(String(want))) return { id: String(want) };
+      boardIds ??= prefer(); // одна загрузка досок на все имена
+      return { id: String((await resolveSprint(want, undefined, await boardIds)).id) };
+    }));
   }
 
   const sprintArg = z.union([z.string(), z.number()]).optional().describe('id, имя или начало имени («S1»); без него — идущий спринт');
@@ -164,11 +198,15 @@ export function registerTrackerAgile({ server, config, api, enc, ref, url, key }
     kind: 'write',
     description:
       'Поставить задачу в спринт (заменяет прежний спринт задачи). Состав спринта — решение планирования: ' +
-      'меняй только по прямой просьбе пользователя.',
+      'меняй только по прямой просьбе пользователя. Если имя есть на нескольких досках, берётся спринт с досок задачи; ' +
+      'иначе ошибка перечислит кандидатов с id и доской.',
     input: { key, sprint: z.union([z.string(), z.number()]).describe('id, имя или начало имени («S2»)'), board: boardArg },
   }, async ({ key: k, sprint, board }) => {
-    const s = await resolveSprint(sprint, board);
+    const prefer = board || /^\d+$/.test(String(sprint)) ? [] : await issueBoards(k);
+    const s = await resolveSprint(sprint, board, prefer);
     const issue = await api('PATCH', `/issues/${enc(k)}`, { sprint: [{ id: String(s.id) }] });
     return { key: issue.key, sprint: issue.sprint?.map(ref), url: url(issue.key) };
   });
+
+  return { sprintField, issueBoards };
 }
