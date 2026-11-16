@@ -230,7 +230,7 @@ export function registerTracker(server, config) {
   registerTrackerLinks(ctx);
   registerTrackerFiles(ctx);
   registerTrackerWorklog(ctx);
-  registerTrackerAgile(ctx);
+  const { sprintField, issueBoards } = registerTrackerAgile(ctx);
   registerTrackerPeople(ctx);
   registerTrackerActivity(ctx);
 
@@ -253,6 +253,8 @@ export function registerTracker(server, config) {
     kind: 'write',
     description:
       'Создать задачу. fields — любые дополнительные поля API (sprint, storyPoints, components, tags, followers, deadline, поля очереди). ' +
+      'fields.sprint — id или имя спринта («Спринт 9», [{"id": "Спринт 9"}]); одноимённые спринты разных досок различаются ' +
+      'по доскам из fields.boards и доскам родителя, иначе ошибка перечислит кандидатов с id. ' +
       'source — откуда задача (встреча, письмо): в описание добавится строка «Источник: …» с меткой, и если задача с такой меткой ' +
       'уже есть, новая не создаётся — вернётся существующая (duplicate: true). ' +
       'Если в проекте есть свой регламент заведения задач (скрипт, обязательные поля) — следуй ему.',
@@ -285,6 +287,13 @@ export function registerTracker(server, config) {
       if (source.kind === 'meeting' && !label.includes(source.id)) label += ` (встреча №${source.id})`;
       description = `${description ? `${description}\n\n` : ''}---\nИсточник: ${label}. Метка ya360: ${marker}`;
     }
+    if (fields?.sprint !== undefined) {
+      const prefer = async () => [
+        ...[].concat(fields.boards ?? []).map((b) => String(b?.id ?? b)),
+        ...(parent ? await issueBoards(parent) : []),
+      ];
+      fields = { ...fields, sprint: await sprintField(fields.sprint, prefer) };
+    }
     const body = { queue: q, summary, ...fields };
     if (description) body.description = description;
     if (type) body.type = type;
@@ -300,9 +309,11 @@ export function registerTracker(server, config) {
     kind: 'update',
     description:
       'Изменить поля задачи. fields — как в API: {"summary": "…"}, {"assignee": "login"}, ' +
-      '{"tags": {"add": ["x"]}}, {"sprint": [{"id": 12}]}. Статус так не меняется — для него tracker_transition_issue.',
+      '{"tags": {"add": ["x"]}}, {"sprint": [{"id": 12}]} — sprint можно и по имени, как в tracker_set_sprint. ' +
+      'Статус так не меняется — для него tracker_transition_issue.',
     input: { key, fields: z.record(z.string(), z.any()) },
   }, async ({ key: k, fields }) => {
+    if (fields.sprint !== undefined) fields = { ...fields, sprint: await sprintField(fields.sprint, () => issueBoards(k)) };
     const issue = await api('PATCH', `/issues/${enc(k)}`, fields);
     return full(issue);
   });

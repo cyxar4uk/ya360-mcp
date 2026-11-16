@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sourceMarker } from '../src/tracker.mjs';
 import { matchUser } from '../src/tracker-people.mjs';
+import { registerTrackerAgile } from '../src/tracker-agile.mjs';
 import { findFragments, attachmentText } from '../src/mail.mjs';
 import { meetingLink } from '../src/calendar.mjs';
 import { loadSkills, promptText, unplug, parseSkill } from '../src/scenarios.mjs';
@@ -119,4 +120,34 @@ test('ссылка на видеовстречу из описания собы�
   assert.equal(meetingLink('Подключайтесь: https://telemost.yandex.ru/j/12345678901234. До встречи'), 'https://telemost.yandex.ru/j/12345678901234');
   assert.equal(meetingLink('Zoom https://us02web.zoom.us/j/999?pwd=x'), 'https://us02web.zoom.us/j/999?pwd=x');
   assert.equal(meetingLink('офис, переговорная 3'), undefined);
+});
+
+test('спринты: одноимённые на разных досках — берётся спринт с досок задачи, иначе кандидаты с id и доской', async () => {
+  const sprint = (id, board) => ({ id, name: 'Спринт 9', status: 'in_progress', startDate: '2026-11-10', endDate: '2026-11-23', board: { id: board, display: `Доска ${board}` } });
+  const calls = [];
+  const api = async (method, path, body) => {
+    calls.push([method, path, body]);
+    if (path === '/boards') return [30, 32, 40].map((id) => ({ id, name: `Доска ${id}` }));
+    const m = /^\/boards\/(\d+)\/sprints$/.exec(path);
+    if (m) return { 30: [sprint(70, 30)], 32: [sprint(71, 32)], 40: [sprint(80, 40)] }[m[1]];
+    if (path === '/issues/A-1') return method === 'GET' ? { key: 'A-1', boards: [{ id: 32 }] } : { key: 'A-1', sprint: [{ display: 'Спринт 9' }] };
+    if (path === '/issues/B-1') return { key: 'B-1', boards: [] };
+    throw new Error(`лишний запрос ${path}`);
+  };
+  const tools = {};
+  const server = { registerTool: (name, def, handler) => (tools[name] = handler) };
+  const { sprintField } = registerTrackerAgile({ server, config: { tracker: {} }, api, enc: encodeURIComponent, ref: (x) => x?.display, url: (k) => k, key: undefined });
+
+  const ok = await tools.tracker_set_sprint({ key: 'A-1', sprint: 'Спринт 9' });
+  assert.ok(!ok.isError, ok.content[0].text);
+  assert.deepEqual(calls.at(-1), ['PATCH', '/issues/A-1', { sprint: [{ id: '71' }] }]);
+
+  const err = await tools.tracker_set_sprint({ key: 'B-1', sprint: 'Спринт 9' });
+  assert.ok(err.isError);
+  for (const part of ['70 «Спринт 9» (доска Доска 30, id 30', '71 «Спринт 9»', '80 «Спринт 9»', 'идёт']) assert.ok(err.content[0].text.includes(part), err.content[0].text);
+
+  assert.deepEqual(await sprintField([{ id: 'Спринт 9' }], async () => ['30']), [{ id: '70' }]);
+  assert.deepEqual(await sprintField('71'), [{ id: '71' }]);
+  assert.deepEqual(await sprintField({ add: [{ id: 5 }] }), { add: [{ id: 5 }] }, 'другие формы — как есть');
+  await assert.rejects(sprintField('Спринт 9'), /71 «Спринт 9»/);
 });
